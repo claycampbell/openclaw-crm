@@ -20,6 +20,7 @@ import {
   Zap,
 } from "lucide-react";
 import { GitHubLogoIcon } from "@radix-ui/react-icons";
+import { JsonLd } from "@/components/json-ld";
 
 /* ── Section groups ─────────────────────────────────────── */
 
@@ -80,9 +81,65 @@ export const metadata = {
   },
 };
 
+const faqSchema = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: [
+    {
+      "@type": "Question",
+      name: "What is OpenClaw CRM?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "OpenClaw CRM is a free, open-source, self-hosted CRM with a built-in AI assistant. It lets you manage contacts, companies, deals, tasks, and notes, and query your data in plain English. Available as a hosted service or self-hosted via Docker Compose. MIT licensed with no per-seat pricing.",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "How do I connect my AI agent to OpenClaw CRM?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "Go to Settings > API Keys to create an API key, then navigate to Settings > OpenClaw to generate a SKILL.md file. Drop the file into your OpenClaw Bot's skills folder at ~/.openclaw/skills/openclaw/SKILL.md, add the skill reference to your openclaw.json config, and restart your bot. Your agent can then manage contacts, deals, tasks, and notes through natural language.",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "What AI models does OpenClaw CRM support?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "OpenClaw CRM works with any model available through OpenRouter, including Claude Sonnet 4, Claude Opus 4, GPT-4o, GPT-4o Mini, Llama 3.1, and Gemini 2.0 Flash. You bring your own OpenRouter API key and choose your preferred model in Settings > AI.",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "How do I self-host OpenClaw CRM?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "Clone the repository from GitHub, configure your .env file with a PostgreSQL connection string and auth secret, then run docker compose -f docker-compose.prod.yml up --build -d. You need Node.js 20+, pnpm 9+, and PostgreSQL 16+. The app is MIT licensed with no vendor lock-in.",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "Does OpenClaw CRM have an API?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "Yes. OpenClaw CRM has a full REST API at /api/v1/ with Bearer token authentication. It covers objects, records, search, tasks, notes, lists, and AI chat. Machine-readable documentation is available at /llms-api.txt, /llms-full.txt, and /openapi.json.",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "How does OpenClaw CRM compare to HubSpot and Salesforce?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "OpenClaw CRM is open-source and free with no per-seat pricing, unlike HubSpot and Salesforce. It offers native AI agent integration where your bot manages your CRM through natural language. You can self-host it for full data control. See the comparison pages for detailed side-by-side breakdowns.",
+      },
+    },
+  ],
+};
+
 export default function DocsPage() {
   return (
     <div className="relative min-h-screen bg-background text-foreground">
+      <JsonLd data={faqSchema} />
       {/* ── Nav ─────────────────────────────────────── */}
       <nav className="sticky top-0 z-50 border-b border-border/10 nav-glass">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">

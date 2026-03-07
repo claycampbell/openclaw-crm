@@ -49,11 +49,43 @@ const softwareSchema = {
     "The CRM your AI agent already knows how to use. Open-source, self-hosted, with native OpenClaw Bot integration.",
 };
 
+const homeFaqSchema = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: [
+    {
+      "@type": "Question",
+      name: "What is OpenClaw CRM?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "OpenClaw CRM is a free, open-source, self-hosted CRM with native AI agent integration. Your AI agent manages contacts, deals, tasks, and notes through natural language. It ships with a built-in AI chat assistant, a full REST API, and deploys with Docker Compose. MIT licensed with no per-seat pricing.",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "How does the AI agent work with OpenClaw CRM?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "OpenClaw CRM integrates with your OpenClaw Bot in two minutes. Generate a skill file from Settings, drop it into your agent config, and your bot can create contacts, update deals, log notes, search data, and manage tasks from wherever you already talk to it. Inside the CRM, a built-in AI chat assistant also analyzes your data and takes actions.",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "Is OpenClaw CRM free?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "Yes. OpenClaw CRM is MIT licensed and completely free. There is no per-seat pricing and no paywalled features. You can use the hosted version or self-host it on your own infrastructure with full data ownership.",
+      },
+    },
+  ],
+};
+
 export default function LandingPage() {
   return (
     <div className="relative bg-background text-foreground">
       <JsonLd data={organizationSchema} />
       <JsonLd data={softwareSchema} />
+      <JsonLd data={homeFaqSchema} />
       {/* Subtle top gradient */}
       <div
         className="pointer-events-none absolute inset-x-0 top-0 h-[70vh]"
