@@ -212,7 +212,30 @@ export default function DocsPage() {
             </Ul>
             <P>
               Either way you get the same full-featured CRM with no per-seat
-              pricing and no paywalled features.
+              pricing and no paywalled features. For an overview of how OpenClaw
+              fits into the broader market, read{" "}
+              <a
+                href="/blog/open-source-crm-landscape"
+                className="text-primary underline underline-offset-4 hover:text-primary/80"
+              >
+                Which Open-Source CRMs Work With AI Agents?
+              </a>{" "}
+              or{" "}
+              <a
+                href="/compare"
+                className="text-primary underline underline-offset-4 hover:text-primary/80"
+              >
+                see how we compare
+              </a>{" "}
+              to HubSpot, Attio, Folk, and Salesforce. Solo founders and
+              freelancers can also check out{" "}
+              <a
+                href="/blog/crm-for-freelancers"
+                className="text-primary underline underline-offset-4 hover:text-primary/80"
+              >
+                CRM for Freelancers
+              </a>
+              .
             </P>
           </Section>
 
@@ -748,6 +771,18 @@ export default function DocsPage() {
               until you explicitly approve.
             </P>
 
+            <P>
+              Want a deeper look at how the AI works?{" "}
+              <a
+                href="/blog/how-we-built-ai-into-crm"
+                className="text-primary underline underline-offset-4 hover:text-primary/80"
+              >
+                Two Ways AI Works in OpenClaw CRM
+              </a>{" "}
+              explains the built-in assistant and the external agent integration
+              side by side.
+            </P>
+
             <H3>Conversations</H3>
             <P>
               Each chat session is a persistent conversation. You can start new
@@ -911,7 +946,15 @@ export default function DocsPage() {
             <P>
               After import, you will see a summary showing how many records were
               created and a list of any rows that had errors (with row numbers).
-              Fix the errors in your CSV and re-import just those rows.
+              Fix the errors in your CSV and re-import just those rows. If you
+              are migrating from a spreadsheet, our guide{" "}
+              <a
+                href="/blog/spreadsheet-to-crm"
+                className="text-primary underline underline-offset-4 hover:text-primary/80"
+              >
+                From Spreadsheet to CRM
+              </a>{" "}
+              walks through the full process.
             </P>
 
             <H3>Exporting to CSV</H3>
@@ -1359,7 +1402,14 @@ export default function DocsPage() {
               OpenClaw CRM is MIT licensed and designed to run on your own
               infrastructure. You need Node.js 20+, pnpm 9+, and PostgreSQL
               16+. Docker is recommended for the database in both development
-              and production.
+              and production. For the reasoning behind self-hosting, see{" "}
+              <a
+                href="/blog/why-self-hosted-crm"
+                className="text-primary underline underline-offset-4 hover:text-primary/80"
+              >
+                Why Self-Hosting Your CRM Matters When You Run an AI Agent
+              </a>
+              .
             </P>
 
             <H3>Prerequisites</H3>
