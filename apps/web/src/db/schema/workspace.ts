@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, jsonb, pgEnum, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, jsonb, pgEnum, uniqueIndex, boolean } from "drizzle-orm/pg-core";
 import { users } from "./auth";
 
 export const workspaceRoleEnum = pgEnum("workspace_role", ["admin", "member"]);
@@ -29,3 +29,15 @@ export const workspaceMembers = pgTable(
     uniqueIndex("workspace_members_unique").on(table.workspaceId, table.userId),
   ]
 );
+
+export const workspaceInvites = pgTable("workspace_invites", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  workspaceId: text("workspace_id").notNull().references(() => workspaces.id, { onDelete: "cascade" }),
+  email: text("email").notNull(),
+  role: workspaceRoleEnum("role").notNull().default("member"),
+  token: text("token").notNull().unique().$defaultFn(() => crypto.randomUUID()),
+  createdBy: text("created_by").references(() => users.id, { onDelete: "set null" }),
+  acceptedAt: timestamp("accepted_at"),
+  expiresAt: timestamp("expires_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});

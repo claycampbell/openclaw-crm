@@ -16,11 +16,14 @@ interface Member {
 
 export default function MembersPage() {
   const [members, setMembers] = useState<Member[]>([]);
+  const [invites, setInvites] = useState<{ id: string; email: string; role: string; token: string; createdAt: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState("");
   const [addRole, setAddRole] = useState<"admin" | "member">("member");
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState("");
+  const [inviteLink, setInviteLink] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   async function fetchMembers() {
     setLoading(true);
@@ -28,7 +31,8 @@ export default function MembersPage() {
       const res = await fetch("/api/v1/workspace-members");
       if (res.ok) {
         const data = await res.json();
-        setMembers(data.data ?? []);
+        setMembers(data.data?.members ?? []);
+        setInvites(data.data?.invites ?? []);
       }
     } finally {
       setLoading(false);
@@ -51,8 +55,12 @@ export default function MembersPage() {
         body: JSON.stringify({ email: email.trim(), role: addRole }),
       });
       if (res.ok) {
+        const data = await res.json();
         setEmail("");
         fetchMembers();
+        if (data.data?.type === "invited") {
+          setInviteLink(data.data.inviteLink);
+        }
       } else {
         const data = await res.json();
         setError(data.error?.message ?? "Failed to add member");
@@ -133,6 +141,35 @@ export default function MembersPage() {
           >
             dismiss
           </button>
+        </div>
+      )}
+
+      {/* Invite link */}
+      {inviteLink && (
+        <div className="mb-4 rounded-md border border-blue-200 bg-blue-50 p-3 text-sm">
+          <p className="font-medium text-blue-800 mb-1">Invite link created — share this with them:</p>
+          <div className="flex items-center gap-2">
+            <code className="flex-1 rounded bg-white border px-2 py-1 text-xs break-all">{inviteLink}</code>
+            <Button size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(inviteLink); setCopied(true); setTimeout(() => setCopied(false), 2000); }}>
+              {copied ? "Copied!" : "Copy"}
+            </Button>
+          </div>
+          <p className="mt-1 text-xs text-blue-600">They must sign up / log in first, then open this link to join.</p>
+        </div>
+      )}
+
+      {/* Pending invites */}
+      {invites.length > 0 && (
+        <div className="mb-4">
+          <p className="text-sm font-medium text-muted-foreground mb-2">Pending Invites</p>
+          <div className="border rounded-lg overflow-hidden">
+            {invites.map((inv) => (
+              <div key={inv.id} className="flex items-center justify-between px-4 py-2 border-b last:border-0 text-sm">
+                <span>{inv.email} <span className="text-xs text-muted-foreground">({inv.role})</span></span>
+                <Button size="sm" variant="outline" onClick={() => { const link = `${window.location.origin}/invite/${inv.token}`; navigator.clipboard.writeText(link); }}>Copy link</Button>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
