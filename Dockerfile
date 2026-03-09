@@ -19,7 +19,7 @@ WORKDIR /app
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
-COPY --from=deps /app/packages/shared/node_modules ./packages/shared/node_modules 2>/dev/null || true
+# packages/shared deps are hoisted to root node_modules — no separate copy needed
 COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -48,9 +48,6 @@ COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/
 COPY --from=builder /app/apps/web/drizzle.config.ts ./apps/web/
 COPY --from=builder /app/apps/web/src/db ./apps/web/src/db
 COPY --from=builder /app/packages/shared ./packages/shared
-
-# Copy marketing content for runtime access (sitemap, dynamic pages)
-COPY --from=builder /app/marketing/content ./marketing/content
 
 USER nextjs
 
