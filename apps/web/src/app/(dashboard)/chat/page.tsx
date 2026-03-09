@@ -1,9 +1,12 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { ConversationList } from "@/components/chat/conversation-list";
-import { MessageList } from "@/components/chat/message-list";
-import { ChatInput } from "@/components/chat/chat-input";
+import { useSession } from "@/lib/auth-client";
+import { WorkspaceSidebar } from "@/components/workspace/workspace-sidebar";
+import { ChannelHeader } from "@/components/workspace/channel-header";
+import { MessageList } from "@/components/workspace/message-list";
+import { MessageInput } from "@/components/workspace/message-input";
+import { ConfirmationCard } from "@/components/chat/confirmation-card";
 
 interface Conversation {
   id: string;
@@ -15,7 +18,7 @@ interface Message {
   id: string;
   role: "user" | "assistant" | "system" | "tool";
   content: string | null;
-  toolCalls?: unknown;
+  toolCalls?: unknown[];
   toolCallId?: string;
   toolName?: string;
   metadata?: {
@@ -37,6 +40,7 @@ interface PendingToolCall {
 }
 
 export default function ChatPage() {
+  const { data: session } = useSession();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -354,37 +358,74 @@ export default function ChatPage() {
     return true;
   });
 
-  return (
-    <div className="flex h-full">
-      {/* Conversation sidebar */}
-      <div className="w-60 border-r border-border bg-muted/30 shrink-0">
-        <ConversationList
-          conversations={conversations}
-          activeId={activeConvId}
-          onSelect={setActiveConvId}
-          onNew={handleNewConversation}
-          onDelete={handleDeleteConversation}
-        />
-      </div>
+  // Derive active conversation title for the channel header
+  const activeConv = conversations.find((c) => c.id === activeConvId);
+  const channelTitle = activeConv?.title || null;
 
-      {/* Chat area */}
-      <div className="flex-1 flex flex-col min-w-0">
+  // User info from session
+  const userName = session?.user?.name || "";
+  const userEmail = session?.user?.email || "";
+  const userInitials = userName
+    ? userName.split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)
+    : userEmail.slice(0, 2).toUpperCase();
+
+  return (
+    /*
+     * This div breaks out of the dashboard layout's "flex-1 overflow-auto" main
+     * by filling 100% of its height and hiding overflow, so our inner flex layout
+     * controls all scrolling.
+     */
+    <div className="flex h-full overflow-hidden bg-white">
+      {/* Workspace sidebar */}
+      <WorkspaceSidebar
+        conversations={conversations}
+        activeConvId={activeConvId}
+        onSelectConversation={setActiveConvId}
+        onNewConversation={handleNewConversation}
+        onDeleteConversation={handleDeleteConversation}
+        userName={userName}
+        userEmail={userEmail}
+      />
+
+      {/* Main channel area */}
+      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+        {/* Channel header */}
+        <ChannelHeader title={channelTitle} memberCount={2} />
+
+        {/* Messages — flex-1 so it fills available space, overflow handled inside */}
         <MessageList
           messages={visibleMessages}
-          streamingContent={streamingContent}
-          isStreaming={streaming}
-          pendingToolCall={pendingToolCall}
-          confirmLoading={confirmLoading}
-          onApprove={handleApprove}
-          onReject={handleReject}
-        />
-        <ChatInput
-          value={input}
-          onChange={setInput}
-          onSend={handleSend}
-          disabled={streaming || !!pendingToolCall}
           streaming={streaming}
+          streamingContent={streamingContent}
+          userName={userName}
+          userInitials={userInitials}
+          channelName={channelTitle || undefined}
         />
+
+        {/* Tool confirmation card */}
+        {pendingToolCall && (
+          <div className="px-4 pb-2">
+            <ConfirmationCard
+              toolName={pendingToolCall.name}
+              toolArgs={pendingToolCall.arguments}
+              onApprove={handleApprove}
+              onReject={handleReject}
+              loading={confirmLoading}
+            />
+          </div>
+        )}
+
+        {/* Message input */}
+        <div className="px-4 pb-4 pt-2 shrink-0">
+          <MessageInput
+            value={input}
+            onChange={setInput}
+            onSend={handleSend}
+            disabled={streaming || !!pendingToolCall}
+            streaming={streaming}
+            channelName={channelTitle || undefined}
+          />
+        </div>
       </div>
     </div>
   );
