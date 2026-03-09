@@ -57,13 +57,12 @@ export default async function BlogIndexPage() {
             href="/"
             className="text-[15px] sm:text-[16px] font-semibold tracking-[-0.015em] text-foreground transition-opacity hover:opacity-70"
           >
-            OpenClaw{" "}
-            <span className="font-normal text-muted-foreground/60">CRM</span>
+            Aria
           </Link>
           <div className="flex items-center">
             <div className="flex items-center gap-1.5 sm:gap-3 mr-3 sm:mr-6">
               <a
-                href="https://github.com/giorgosn/openclaw-crm"
+                href="https://github.com/claycampbell/openclaw-crm"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="rounded-full p-2 text-muted-foreground/50 transition-all hover:text-foreground hover:bg-foreground/[0.05]"
@@ -165,7 +164,7 @@ export default async function BlogIndexPage() {
       <footer className="border-t border-border/15">
         <div className="mx-auto flex max-w-5xl flex-col sm:flex-row items-center justify-between gap-4 px-6 py-6 sm:py-8">
           <span className="text-[12px] text-muted-foreground/60">
-            OpenClaw CRM
+            Aria
           </span>
           <div className="flex items-center gap-5">
             <Link
@@ -187,7 +186,7 @@ export default async function BlogIndexPage() {
               Compare
             </Link>
             <a
-              href="https://github.com/giorgosn/openclaw-crm"
+              href="https://github.com/claycampbell/openclaw-crm"
               target="_blank"
               rel="noopener noreferrer"
               className="text-[12px] text-muted-foreground/60 transition-colors hover:text-muted-foreground"

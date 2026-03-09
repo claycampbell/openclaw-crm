@@ -28,7 +28,7 @@ const tocGroups = [
   {
     label: "Getting Started",
     sections: [
-      { id: "what-is-openclaw", label: "What is OpenClaw CRM", icon: Rocket },
+      { id: "what-is-openclaw", label: "What is Aria", icon: Rocket },
       { id: "creating-account", label: "Creating your account", icon: Users },
       { id: "essential-setup", label: "Essential setup", icon: Zap },
     ],
@@ -36,7 +36,7 @@ const tocGroups = [
   {
     label: "Connect Your Agent",
     sections: [
-      { id: "openclaw-bot", label: "OpenClaw Bot Integration", icon: Bot },
+      { id: "openclaw-bot", label: "Aria Bot Integration", icon: Bot },
     ],
   },
   {
@@ -75,7 +75,7 @@ import { baseUrl } from "@/lib/base-url";
 export const metadata = {
   title: "Docs",
   description:
-    "Learn how to connect your OpenClaw Bot, set up AI, import your data, and build your pipeline.",
+    "Learn how to connect your Aria Bot, set up AI, import your data, and build your pipeline.",
   alternates: {
     canonical: `${baseUrl}/docs`,
   },
@@ -87,31 +87,31 @@ const faqSchema = {
   mainEntity: [
     {
       "@type": "Question",
-      name: "What is OpenClaw CRM?",
+      name: "What is Aria?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "OpenClaw CRM is a free, open-source, self-hosted CRM with a built-in AI assistant. It lets you manage contacts, companies, deals, tasks, and notes, and query your data in plain English. Available as a hosted service or self-hosted via Docker Compose. MIT licensed with no per-seat pricing.",
+        text: "Aria is a free, open-source, self-hosted CRM with a built-in AI assistant. It lets you manage contacts, companies, deals, tasks, and notes, and query your data in plain English. Available as a hosted service or self-hosted via Docker Compose. MIT licensed with no per-seat pricing.",
       },
     },
     {
       "@type": "Question",
-      name: "How do I connect my AI agent to OpenClaw CRM?",
+      name: "How do I connect my AI agent to Aria?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Go to Settings > API Keys to create an API key, then navigate to Settings > OpenClaw to generate a SKILL.md file. Drop the file into your OpenClaw Bot's skills folder at ~/.openclaw/skills/openclaw/SKILL.md, add the skill reference to your openclaw.json config, and restart your bot. Your agent can then manage contacts, deals, tasks, and notes through natural language.",
+        text: "Go to Settings > API Keys to create an API key, then navigate to Settings > Aria to generate a SKILL.md file. Drop the file into your Aria Bot's skills folder at ~/.aria/skills/aria/SKILL.md, add the skill reference to your aria.json config, and restart your bot. Your agent can then manage contacts, deals, tasks, and notes through natural language.",
       },
     },
     {
       "@type": "Question",
-      name: "What AI models does OpenClaw CRM support?",
+      name: "What AI models does Aria support?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "OpenClaw CRM works with any model available through OpenRouter, including Claude Sonnet 4, Claude Opus 4, GPT-4o, GPT-4o Mini, Llama 3.1, and Gemini 2.0 Flash. You bring your own OpenRouter API key and choose your preferred model in Settings > AI.",
+        text: "Aria works with any model available through OpenRouter, including Claude Sonnet 4, Claude Opus 4, GPT-4o, GPT-4o Mini, Llama 3.1, and Gemini 2.0 Flash. You bring your own OpenRouter API key and choose your preferred model in Settings > AI.",
       },
     },
     {
       "@type": "Question",
-      name: "How do I self-host OpenClaw CRM?",
+      name: "How do I self-host Aria?",
       acceptedAnswer: {
         "@type": "Answer",
         text: "Clone the repository from GitHub, configure your .env file with a PostgreSQL connection string and auth secret, then run docker compose -f docker-compose.prod.yml up --build -d. You need Node.js 20+, pnpm 9+, and PostgreSQL 16+. The app is MIT licensed with no vendor lock-in.",
@@ -119,18 +119,18 @@ const faqSchema = {
     },
     {
       "@type": "Question",
-      name: "Does OpenClaw CRM have an API?",
+      name: "Does Aria have an API?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Yes. OpenClaw CRM has a full REST API at /api/v1/ with Bearer token authentication. It covers objects, records, search, tasks, notes, lists, and AI chat. Machine-readable documentation is available at /llms-api.txt, /llms-full.txt, and /openapi.json.",
+        text: "Yes. Aria has a full REST API at /api/v1/ with Bearer token authentication. It covers objects, records, search, tasks, notes, lists, and AI chat. Machine-readable documentation is available at /llms-api.txt, /llms-full.txt, and /openapi.json.",
       },
     },
     {
       "@type": "Question",
-      name: "How does OpenClaw CRM compare to HubSpot and Salesforce?",
+      name: "How does Aria compare to HubSpot and Salesforce?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "OpenClaw CRM is open-source and free with no per-seat pricing, unlike HubSpot and Salesforce. It offers native AI agent integration where your bot manages your CRM through natural language. You can self-host it for full data control. See the comparison pages for detailed side-by-side breakdowns.",
+        text: "Aria is open-source and free with no per-seat pricing, unlike HubSpot and Salesforce. It offers native AI agent integration where your bot manages your CRM through natural language. You can self-host it for full data control. See the comparison pages for detailed side-by-side breakdowns.",
       },
     },
   ],
@@ -148,8 +148,7 @@ export default function DocsPage() {
               href="/"
               className="text-[15px] font-semibold tracking-[-0.015em] text-foreground transition-opacity hover:opacity-70"
             >
-              OpenClaw{" "}
-              <span className="font-normal text-muted-foreground/60">CRM</span>
+              Aria
             </Link>
             <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-medium text-primary">
               Docs
@@ -157,7 +156,7 @@ export default function DocsPage() {
           </div>
           <div className="flex items-center gap-1">
             <a
-              href="https://github.com/giorgosn/openclaw-crm"
+              href="https://github.com/claycampbell/openclaw-crm"
               target="_blank"
               rel="noopener noreferrer"
               className="rounded-full p-2 text-muted-foreground/50 transition-all hover:text-foreground hover:bg-foreground/[0.05]"
@@ -232,16 +231,16 @@ export default function DocsPage() {
           {/* ══════════════════════════════════════════ */}
           <GroupDivider label="Getting Started" />
 
-          {/* ── What is OpenClaw CRM ─────────────────── */}
-          <Section id="what-is-openclaw" icon={Rocket} title="What is OpenClaw CRM?">
+          {/* ── What is Aria ─────────────────── */}
+          <Section id="what-is-openclaw" icon={Rocket} title="What is Aria?">
             <P>
-              OpenClaw CRM helps you keep track of people, companies, deals,
+              Aria helps you keep track of people, companies, deals,
               tasks, and notes in one place. It comes with a built-in AI
               assistant that lets you query and update your data in plain
               English, without writing any queries or learning a new interface.
             </P>
             <P>
-              OpenClaw is open-source (MIT licensed) and available in two ways:
+              Aria is open-source (MIT licensed) and available in two ways:
             </P>
             <Ul>
               <li>
@@ -269,7 +268,7 @@ export default function DocsPage() {
             </Ul>
             <P>
               Either way you get the same full-featured CRM with no per-seat
-              pricing and no paywalled features. For an overview of how OpenClaw
+              pricing and no paywalled features. For an overview of how Aria
               fits into the broader market, read{" "}
               <a
                 href="/blog/open-source-crm-landscape"
@@ -406,7 +405,7 @@ export default function DocsPage() {
                 and create a free account. Generate an API key.
               </li>
               <li>
-                In OpenClaw, go to{" "}
+                In Aria, go to{" "}
                 <a
                   href="/settings/ai"
                   className="text-primary underline underline-offset-4 hover:text-primary/80"
@@ -528,9 +527,9 @@ export default function DocsPage() {
           {/* ══════════════════════════════════════════ */}
           <GroupDivider label="Connect Your Agent" />
 
-          <Section id="openclaw-bot" icon={Bot} title="OpenClaw Bot Integration">
+          <Section id="openclaw-bot" icon={Bot} title="Aria Bot Integration">
             <P>
-              OpenClaw CRM plugs directly into your OpenClaw Bot. Generate a
+              Aria plugs directly into your Aria Bot. Generate a
               skill file, drop it into your agent config, and your agent can
               create contacts, update deals, log notes, search data, and manage
               tasks, all from wherever you already talk to it.
@@ -551,10 +550,10 @@ export default function DocsPage() {
               <li>
                 Navigate to{" "}
                 <a
-                  href="/settings/openclaw"
+                  href="/settings/aria"
                   className="text-primary underline underline-offset-4 hover:text-primary/80"
                 >
-                  <Strong>Settings &gt; OpenClaw</Strong>
+                  <Strong>Settings &gt; Aria</Strong>
                 </a>
                 .
               </li>
@@ -572,13 +571,13 @@ export default function DocsPage() {
             <Ol>
               <li>
                 Copy the downloaded file to{" "}
-                <Code>~/.openclaw/skills/openclaw/SKILL.md</Code>
+                <Code>~/.aria/skills/aria/SKILL.md</Code>
               </li>
               <li>
-                Add the skill reference to your <Code>openclaw.json</Code>{" "}
+                Add the skill reference to your <Code>aria.json</Code>{" "}
                 config file.
               </li>
-              <li>Restart your OpenClaw Bot.</li>
+              <li>Restart your Aria Bot.</li>
             </Ol>
 
             <H3>Test it</H3>
@@ -679,7 +678,7 @@ export default function DocsPage() {
 
             <H3>Attribute types</H3>
             <P>
-              OpenClaw CRM supports 17 attribute types: text, number, currency,
+              Aria supports 17 attribute types: text, number, currency,
               date, timestamp, checkbox, select (dropdown), status, rating,
               email address, phone number, domain (website), location, personal
               name, record reference (link to another record), actor reference
@@ -751,7 +750,7 @@ export default function DocsPage() {
           {/* ── AI Chat ────────────────────────────── */}
           <Section id="ai-chat" icon={Bot} title="AI Chat">
             <P>
-              OpenClaw CRM has a built-in AI assistant that can read and write
+              Aria has a built-in AI assistant that can read and write
               your CRM data using plain English. It works through OpenRouter,
               which means you can use Claude, GPT-4o, Llama, Gemini, and other
               models, whatever you prefer or already pay for.
@@ -834,7 +833,7 @@ export default function DocsPage() {
                 href="/blog/how-we-built-ai-into-crm"
                 className="text-primary underline underline-offset-4 hover:text-primary/80"
               >
-                Two Ways AI Works in OpenClaw CRM
+                Two Ways AI Works in Aria
               </a>{" "}
               explains the built-in assistant and the external agent integration
               side by side.
@@ -1224,7 +1223,7 @@ export default function DocsPage() {
             </P>
             <P>
               You can also configure the{" "}
-              <Strong>OpenClaw AI Agent</Strong> from this page, which enables
+              <Strong>Aria AI Agent</Strong> from this page, which enables
               the built-in assistant to perform CRM actions on behalf of your
               team. See the{" "}
               <a
@@ -1296,7 +1295,7 @@ export default function DocsPage() {
             title="API & Integrations"
           >
             <P>
-              OpenClaw CRM has a full REST API so you can integrate with other
+              Aria has a full REST API so you can integrate with other
               tools, automate workflows, sync data with external systems, or
               build custom apps on top of your CRM data.
             </P>
@@ -1456,7 +1455,7 @@ export default function DocsPage() {
           {/* ── Self-Hosting ───────────────────────── */}
           <Section id="self-hosting" icon={Server} title="Self-Hosting">
             <P>
-              OpenClaw CRM is MIT licensed and designed to run on your own
+              Aria is MIT licensed and designed to run on your own
               infrastructure. You need Node.js 20+, pnpm 9+, and PostgreSQL
               16+. Docker is recommended for the database in both development
               and production. For the reasoning behind self-hosting, see{" "}
@@ -1495,7 +1494,7 @@ export default function DocsPage() {
                 Clone the repository:
                 <br />
                 <Code>
-                  git clone https://github.com/giorgosn/openclaw-crm.git
+                  git clone https://github.com/claycampbell/openclaw-crm.git
                 </Code>
               </li>
               <li>
@@ -1701,7 +1700,7 @@ export default function DocsPage() {
       <footer className="mt-12 border-t border-border/15">
         <div className="mx-auto flex max-w-6xl flex-col sm:flex-row items-center justify-between gap-4 px-6 py-6">
           <span className="text-[12px] text-muted-foreground/60">
-            OpenClaw CRM
+            Aria
           </span>
           <div className="flex items-center gap-5">
             <Link
@@ -1717,7 +1716,7 @@ export default function DocsPage() {
               Compare
             </Link>
             <a
-              href="https://github.com/giorgosn/openclaw-crm"
+              href="https://github.com/claycampbell/openclaw-crm"
               target="_blank"
               rel="noopener noreferrer"
               className="text-[12px] text-muted-foreground/60 transition-colors hover:text-muted-foreground"

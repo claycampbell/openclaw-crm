@@ -151,9 +151,9 @@ export default function HomePage() {
   // Load dismissed onboarding steps from localStorage
   useEffect(() => {
     try {
-      const dismissed = localStorage.getItem("openclaw-onboarding-dismissed");
+      const dismissed = localStorage.getItem("aria-onboarding-dismissed");
       if (dismissed) setDismissedSteps(JSON.parse(dismissed));
-      const fullyDismissed = localStorage.getItem("openclaw-onboarding-hidden");
+      const fullyDismissed = localStorage.getItem("aria-onboarding-hidden");
       if (fullyDismissed === "true") setOnboardingDismissed(true);
     } catch {}
   }, []);
@@ -233,12 +233,12 @@ export default function HomePage() {
   function dismissStep(stepId: string) {
     const updated = [...dismissedSteps, stepId];
     setDismissedSteps(updated);
-    try { localStorage.setItem("openclaw-onboarding-dismissed", JSON.stringify(updated)); } catch {}
+    try { localStorage.setItem("aria-onboarding-dismissed", JSON.stringify(updated)); } catch {}
   }
 
   function dismissOnboarding() {
     setOnboardingDismissed(true);
-    try { localStorage.setItem("openclaw-onboarding-hidden", "true"); } catch {}
+    try { localStorage.setItem("aria-onboarding-hidden", "true"); } catch {}
   }
 
   const firstName = session?.user?.name?.split(" ")[0] ?? "";

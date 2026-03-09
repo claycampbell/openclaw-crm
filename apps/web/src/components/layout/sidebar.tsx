@@ -144,7 +144,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
               {expanded && (
                 <>
                   <span className="text-sm font-medium text-foreground truncate flex-1">
-                    {activeWorkspace?.name || "OpenClaw"}
+                    {activeWorkspace?.name || "Aria"}
                   </span>
                   <ChevronsUpDown className="h-3 w-3 text-muted-foreground shrink-0" />
                 </>

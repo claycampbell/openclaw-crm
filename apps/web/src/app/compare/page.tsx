@@ -10,7 +10,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Compare",
   description:
-    "See how OpenClaw CRM compares to HubSpot, Attio, Folk, and Salesforce. Honest, side-by-side breakdowns for small teams.",
+    "See how Aria compares to HubSpot, Attio, Folk, and Salesforce. Honest, side-by-side breakdowns for small teams.",
   alternates: {
     canonical: `${baseUrl}/compare`,
   },
@@ -37,13 +37,12 @@ export default async function CompareIndexPage() {
             href="/"
             className="text-[15px] sm:text-[16px] font-semibold tracking-[-0.015em] text-foreground transition-opacity hover:opacity-70"
           >
-            OpenClaw{" "}
-            <span className="font-normal text-muted-foreground/60">CRM</span>
+            Aria
           </Link>
           <div className="flex items-center">
             <div className="flex items-center gap-1.5 sm:gap-3 mr-3 sm:mr-6">
               <a
-                href="https://github.com/giorgosn/openclaw-crm"
+                href="https://github.com/claycampbell/openclaw-crm"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="rounded-full p-2 text-muted-foreground/50 transition-all hover:text-foreground hover:bg-foreground/[0.05]"
@@ -83,7 +82,7 @@ export default async function CompareIndexPage() {
           Compare
         </h1>
         <p className="mt-4 max-w-lg text-[15px] leading-relaxed text-muted-foreground">
-          See how OpenClaw compares. The only CRM with native AI agent
+          See how Aria compares. The only CRM with native AI agent
           integration.
         </p>
       </section>
@@ -147,7 +146,7 @@ export default async function CompareIndexPage() {
       <footer className="border-t border-border/15">
         <div className="mx-auto flex max-w-5xl flex-col sm:flex-row items-center justify-between gap-4 px-6 py-6 sm:py-8">
           <span className="text-[12px] text-muted-foreground/60">
-            OpenClaw CRM
+            Aria
           </span>
           <div className="flex items-center gap-5">
             <Link
@@ -169,7 +168,7 @@ export default async function CompareIndexPage() {
               Compare
             </Link>
             <a
-              href="https://github.com/giorgosn/openclaw-crm"
+              href="https://github.com/claycampbell/openclaw-crm"
               target="_blank"
               rel="noopener noreferrer"
               className="text-[12px] text-muted-foreground/60 transition-colors hover:text-muted-foreground"

@@ -15,25 +15,25 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: {
-    default: "OpenClaw CRM",
-    template: "%s | OpenClaw CRM",
+    default: "Aria",
+    template: "%s | Aria",
   },
   description:
-    "The CRM your AI agent already knows how to use. Open-source, self-hosted, with native OpenClaw Bot integration.",
+    "The CRM your AI agent already knows how to use. Open-source, self-hosted, with native Aria Bot integration.",
   metadataBase: new URL(baseUrl),
   openGraph: {
-    title: "OpenClaw CRM",
+    title: "Aria",
     description:
-      "The CRM your AI agent already knows how to use. Open-source, self-hosted, with native OpenClaw Bot integration.",
-    siteName: "OpenClaw CRM",
+      "The CRM your AI agent already knows how to use. Open-source, self-hosted, with native Aria Bot integration.",
+    siteName: "Aria",
     type: "website",
     locale: "en_US",
   },
   twitter: {
     card: "summary_large_image",
-    title: "OpenClaw CRM",
+    title: "Aria",
     description:
-      "The CRM your AI agent already knows how to use. Open-source, self-hosted, with native OpenClaw Bot integration.",
+      "The CRM your AI agent already knows how to use. Open-source, self-hosted, with native Aria Bot integration.",
   },
   ...(process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION
     ? {

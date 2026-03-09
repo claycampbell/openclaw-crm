@@ -25,7 +25,7 @@ interface ApiKey {
   createdAt: string;
 }
 
-export default function OpenClawPage() {
+export default function AriaPage() {
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedKeyId, setSelectedKeyId] = useState<string>("");
@@ -64,29 +64,29 @@ export default function OpenClawPage() {
 
   // Generate SKILL.md content
   const skillMd = useMemo(() => {
-    const url = instanceUrl || "https://your-openclaw-instance.com";
+    const url = instanceUrl || "https://your-aria-instance.com";
     return `---
-name: openclaw
-description: Interact with OpenClaw CRM CRM — manage workspaces, records, contacts, companies, deals, tasks, notes, and lists.
+name: aria
+description: Interact with Aria CRM — manage workspaces, records, contacts, companies, deals, tasks, notes, and lists.
 homepage: ${url}
 user-invocable: true
 metadata:
   clawdbot:
     requires:
       env:
-        - OPENCLAW_API_URL
-        - OPENCLAW_API_KEY
+        - ARIA_API_URL
+        - ARIA_API_KEY
 ---
 
-# OpenClaw CRM CRM Skill
+# Aria CRM Skill
 
-You have access to an OpenClaw CRM CRM instance. Use its REST API to help users manage their workspaces, contacts, companies, deals, tasks, notes, and lists.
+You have access to an Aria CRM instance. Use its REST API to help users manage their workspaces, contacts, companies, deals, tasks, notes, and lists.
 
 ## Configuration
 
-- **Base URL**: \`$OPENCLAW_API_URL\` (e.g. \`${url}\`)
-- **Auth**: Bearer token via \`$OPENCLAW_API_KEY\`
-- All requests use \`Authorization: Bearer $OPENCLAW_API_KEY\` header
+- **Base URL**: \`$ARIA_API_URL\` (e.g. \`${url}\`)
+- **Auth**: Bearer token via \`$ARIA_API_KEY\`
+- All requests use \`Authorization: Bearer $ARIA_API_KEY\` header
 - All responses use envelope format: \`{ "data": ... }\` on success, \`{ "error": { "code", "message" } }\` on error
 - API keys are scoped to a single workspace — all data returned is from the key's workspace
 
@@ -335,17 +335,17 @@ When creating or updating records, use these value formats:
 `;
   }, [instanceUrl]);
 
-  // Generate openclaw.json config
-  const openclawConfig = useMemo(() => {
-    const url = instanceUrl || "https://your-openclaw-instance.com";
+  // Generate aria.json config
+  const ariaConfig = useMemo(() => {
+    const url = instanceUrl || "https://your-aria-instance.com";
     return JSON.stringify(
       {
         skills: {
-          openclaw: {
+          aria: {
             enabled: true,
             env: {
-              OPENCLAW_API_URL: url,
-              OPENCLAW_API_KEY: selectedKey
+              ARIA_API_URL: url,
+              ARIA_API_KEY: selectedKey
                 ? `${selectedKey.keyPrefix}...`
                 : "<your-api-key>",
             },
@@ -357,7 +357,7 @@ When creating or updating records, use these value formats:
     );
   }, [instanceUrl, selectedKey]);
 
-  const installCmd = `mkdir -p ~/.openclaw/skills/openclaw && cp SKILL.md ~/.openclaw/skills/openclaw/SKILL.md`;
+  const installCmd = `mkdir -p ~/.aria/skills/aria && cp SKILL.md ~/.aria/skills/aria/SKILL.md`;
 
   function handleCopy(text: string, key: "skill" | "config" | "install") {
     navigator.clipboard.writeText(text);
@@ -386,19 +386,19 @@ When creating or updating records, use these value formats:
   return (
     <div className="max-w-3xl">
       <div className="mb-6">
-        <h1 className="text-xl font-semibold">OpenClaw Integration</h1>
+        <h1 className="text-xl font-semibold">Aria Integration</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Generate a skill file to connect your OpenClaw CRM instance with{" "}
+          Generate a skill file to connect your Aria instance with{" "}
           <a
-            href="https://openclaw.com"
+            href="https://aria.seawolfai.net"
             target="_blank"
             rel="noopener noreferrer"
             className="underline hover:text-foreground inline-flex items-center gap-1"
           >
-            OpenClaw
+            Aria
             <ExternalLink className="h-3 w-3" />
           </a>
-          . This lets OpenClaw agents interact with your CRM data.
+          . This lets Aria Bot agents interact with your CRM data.
         </p>
       </div>
 
@@ -422,7 +422,7 @@ When creating or updating records, use these value formats:
                 placeholder="https://your-crm.example.com"
               />
               <p className="text-xs text-muted-foreground">
-                The URL where your OpenClaw CRM instance is accessible.
+                The URL where your Aria instance is accessible.
               </p>
             </div>
 
@@ -450,11 +450,11 @@ When creating or updating records, use these value formats:
                   >
                     Create one first
                   </a>{" "}
-                  to use with OpenClaw.
+                  to use with Aria Bot.
                 </div>
               )}
               <p className="text-xs text-muted-foreground">
-                The API key OpenClaw will use to authenticate. Create keys in{" "}
+                The API key Aria Bot will use to authenticate. Create keys in{" "}
                 <a
                   href="/settings/api-keys"
                   className="underline hover:text-foreground"
@@ -507,19 +507,19 @@ When creating or updating records, use these value formats:
           </div>
         </section>
 
-        {/* Step 3: OpenClaw Config */}
+        {/* Step 3: Aria Config */}
         <section className="rounded-lg border p-4 space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Badge variant="secondary" className="text-xs font-mono">
                 3
               </Badge>
-              <h2 className="font-medium">OpenClaw Config</h2>
+              <h2 className="font-medium">Aria Config</h2>
             </div>
             <Button
               variant="outline"
               size="sm"
-              onClick={() => handleCopy(openclawConfig, "config")}
+              onClick={() => handleCopy(ariaConfig, "config")}
             >
               {copied === "config" ? (
                 <Check className="mr-1 h-3.5 w-3.5 text-green-500" />
@@ -531,17 +531,17 @@ When creating or updating records, use these value formats:
           </div>
 
           <p className="text-sm text-muted-foreground">
-            Add this to your <code className="text-xs bg-muted px-1 py-0.5 rounded">openclaw.json</code> or <code className="text-xs bg-muted px-1 py-0.5 rounded">moltbot.json</code> config file.
+            Add this to your <code className="text-xs bg-muted px-1 py-0.5 rounded">aria.json</code> config file.
             Replace the API key placeholder with your actual key.
           </p>
 
           <div className="relative">
             <div className="absolute top-2 left-3 flex items-center gap-1.5 text-xs text-muted-foreground">
               <FileText className="h-3 w-3" />
-              openclaw.json
+              aria.json
             </div>
             <pre className="rounded-md bg-muted p-3 pt-8 overflow-x-auto text-xs leading-relaxed">
-              <code>{openclawConfig}</code>
+              <code>{ariaConfig}</code>
             </pre>
           </div>
         </section>
@@ -570,7 +570,7 @@ When creating or updating records, use these value formats:
           </div>
 
           <p className="text-sm text-muted-foreground">
-            After downloading the SKILL.md, install it to your OpenClaw skills directory:
+            After downloading the SKILL.md, install it to your Aria Bot skills directory:
           </p>
 
           <div className="relative">
@@ -589,10 +589,10 @@ When creating or updating records, use these value formats:
             </p>
             <ol className="list-decimal pl-5 space-y-1 text-muted-foreground text-xs">
               <li>Download the SKILL.md file above</li>
-              <li>Place it at <code className="bg-muted px-1 py-0.5 rounded">~/.openclaw/skills/openclaw/SKILL.md</code></li>
-              <li>Add the config snippet to your <code className="bg-muted px-1 py-0.5 rounded">openclaw.json</code></li>
+              <li>Place it at <code className="bg-muted px-1 py-0.5 rounded">~/.aria/skills/aria/SKILL.md</code></li>
+              <li>Add the config snippet to your <code className="bg-muted px-1 py-0.5 rounded">aria.json</code></li>
               <li>Set your actual API key in the config (from Settings &gt; API Keys)</li>
-              <li>Restart OpenClaw — the agent can now interact with your CRM</li>
+              <li>Restart Aria Bot — the agent can now interact with your CRM</li>
             </ol>
           </div>
         </section>

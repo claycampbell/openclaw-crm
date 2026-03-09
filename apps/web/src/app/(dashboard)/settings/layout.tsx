@@ -11,7 +11,7 @@ const settingsNav = [
   { href: "/settings/objects", label: "Objects", icon: Box, exact: false },
   { href: "/settings/api-keys", label: "API Keys", icon: KeyRound, exact: false },
   { href: "/settings/ai", label: "AI Agent", icon: Bot, exact: false },
-  { href: "/settings/openclaw", label: "OpenClaw", icon: Puzzle, exact: false },
+  { href: "/settings/aria", label: "Aria", icon: Puzzle, exact: false },
 ];
 
 export default function SettingsLayout({
