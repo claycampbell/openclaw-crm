@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, jsonb, pgEnum, index } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, jsonb, boolean, pgEnum, index } from "drizzle-orm/pg-core";
 import { workspaces } from "./workspace";
 import { users } from "./auth";
 
@@ -21,6 +21,8 @@ export const conversations = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     title: text("title").notNull().default("New conversation"),
     model: text("model").notNull().default("anthropic/claude-sonnet-4"),
+    channelName: text("channel_name"),        // e.g. "general", "deals", "tasks"
+    channelType: text("channel_type").default("direct"), // "channel" | "direct"
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
@@ -43,6 +45,8 @@ export const messages = pgTable(
     toolCallId: text("tool_call_id"), // For tool result messages
     toolName: text("tool_name"),
     metadata: jsonb("metadata"), // confirmation status, etc.
+    agentName: text("agent_name"),            // e.g. "Aria" — null for user messages
+    isProactive: boolean("is_proactive").default(false), // true = agent initiated, not a reply
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (table) => [

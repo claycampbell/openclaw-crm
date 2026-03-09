@@ -6,6 +6,10 @@ import {
   deleteConversation,
   getConversationMessages,
 } from "@/services/ai-chat";
+import { db } from "@/db";
+import { messages } from "@/db/schema";
+import { eq, and, gt } from "drizzle-orm";
+import { asc } from "drizzle-orm";
 
 export async function GET(
   req: NextRequest,
@@ -18,7 +22,26 @@ export async function GET(
   const conv = await getConversation(conversationId, ctx.userId);
   if (!conv) return notFound("Conversation not found");
 
-  const msgs = await getConversationMessages(conversationId);
+  // Support ?after=<ISO timestamp> for lightweight polling
+  const { searchParams } = new URL(req.url);
+  const afterParam = searchParams.get("after");
+
+  let msgs;
+  if (afterParam) {
+    const afterDate = new Date(afterParam);
+    msgs = await db
+      .select()
+      .from(messages)
+      .where(
+        and(
+          eq(messages.conversationId, conversationId),
+          gt(messages.createdAt, afterDate)
+        )
+      )
+      .orderBy(asc(messages.createdAt));
+  } else {
+    msgs = await getConversationMessages(conversationId);
+  }
 
   return success({ ...conv, messages: msgs });
 }

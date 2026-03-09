@@ -11,6 +11,8 @@ interface MessageItemProps {
     content: string | null;
     toolCalls?: unknown[];
     metadata?: unknown;
+    agentName?: string;
+    isProactive?: boolean;
     createdAt: string;
   };
   isStreaming?: boolean;
@@ -148,6 +150,7 @@ export function MessageItem({
 
   const isAssistant = message.role === "assistant";
   const isUser = message.role === "user";
+  const isProactive = message.isProactive === true || (isAssistant && !!message.agentName);
 
   const displayContent =
     isStreaming && streamingContent != null
@@ -192,10 +195,15 @@ export function MessageItem({
       {/* Content */}
       <div className="flex-1 min-w-0">
         {/* Author + timestamp */}
-        <div className="flex items-baseline gap-2 mb-0.5">
+        <div className="flex items-center gap-2 mb-0.5">
           <span className="text-sm font-semibold text-zinc-900">
-            {isAssistant ? "Aria" : userName || "You"}
+            {isAssistant ? (message.agentName || "Aria") : (userName || "You")}
           </span>
+          {isProactive && (
+            <span className="bg-violet-100 text-violet-700 text-[10px] px-1.5 py-0.5 rounded-full leading-none">
+              agent
+            </span>
+          )}
           <span className="text-xs text-zinc-400">{timeString}</span>
         </div>
 

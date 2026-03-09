@@ -5,6 +5,7 @@ import { Hash, Plus, Search, Settings, Pencil, Circle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface WorkspaceSidebarProps {
+  channels: { id: string; title: string; channelName: string; updatedAt: string }[];
   conversations: { id: string; title: string; updatedAt: string }[];
   activeConvId: string | null;
   onSelectConversation: (id: string) => void;
@@ -41,6 +42,7 @@ function pickColor(str: string): string {
 }
 
 export function WorkspaceSidebar({
+  channels,
   conversations,
   activeConvId,
   onSelectConversation,
@@ -60,7 +62,7 @@ export function WorkspaceSidebar({
         <span className="font-bold text-white text-base tracking-tight">Aria</span>
         <button
           onClick={onNewConversation}
-          title="New conversation"
+          title="New thread"
           className="flex items-center justify-center h-7 w-7 rounded hover:bg-zinc-700 text-zinc-400 hover:text-white transition-colors"
         >
           <Pencil className="h-4 w-4" />
@@ -78,15 +80,48 @@ export function WorkspaceSidebar({
 
       {/* Scrollable nav area */}
       <div className="flex-1 overflow-y-auto px-2 pb-2 space-y-4">
-        {/* Channels section */}
+        {/* Channels section — fixed agent-owned channels */}
         <div>
           <div className="flex items-center justify-between px-2 py-1 mt-1">
             <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
               Channels
             </span>
+          </div>
+
+          <div className="space-y-0.5">
+            {channels.map((ch) => (
+              <button
+                key={ch.id}
+                onClick={() => onSelectConversation(ch.id)}
+                className={cn(
+                  "w-full flex items-center gap-1.5 px-2 py-1 rounded text-sm text-left transition-colors",
+                  activeConvId === ch.id
+                    ? "bg-zinc-700 text-white"
+                    : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
+                )}
+              >
+                <Hash className="h-3.5 w-3.5 shrink-0 opacity-70" />
+                <span className="flex-1 truncate text-xs">
+                  {ch.channelName || ch.title}
+                </span>
+              </button>
+            ))}
+
+            {channels.length === 0 && (
+              <p className="px-2 py-1 text-xs text-zinc-500">No channels yet</p>
+            )}
+          </div>
+        </div>
+
+        {/* Threads section — user conversations */}
+        <div>
+          <div className="flex items-center justify-between px-2 py-1">
+            <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
+              Threads
+            </span>
             <button
               onClick={onNewConversation}
-              title="New channel"
+              title="New thread"
               className="flex items-center justify-center h-5 w-5 rounded hover:bg-zinc-700 text-zinc-500 hover:text-zinc-300 transition-colors"
             >
               <Plus className="h-3.5 w-3.5" />
@@ -133,7 +168,7 @@ export function WorkspaceSidebar({
             ))}
 
             {conversations.length === 0 && (
-              <p className="px-2 py-1 text-xs text-zinc-500">No conversations yet</p>
+              <p className="px-2 py-1 text-xs text-zinc-500">No threads yet</p>
             )}
           </div>
         </div>

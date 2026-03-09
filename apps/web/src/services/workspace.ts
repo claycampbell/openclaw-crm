@@ -2,6 +2,7 @@ import { db } from "@/db";
 import { workspaces, workspaceMembers, users, objects, attributes, statuses } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { STANDARD_OBJECTS, DEAL_STAGES } from "@openclaw-crm/shared";
+import { seedDefaultChannels } from "./agent-channels";
 
 // ─── Workspace ───────────────────────────────────────────────────────
 
@@ -67,6 +68,9 @@ export async function createWorkspace(name: string, userId: string) {
 
   // Seed standard objects
   await seedWorkspaceObjects(workspace.id);
+
+  // Seed default agent channels
+  await seedDefaultChannels(workspace.id);
 
   return workspace;
 }

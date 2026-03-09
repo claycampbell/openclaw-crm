@@ -3,6 +3,7 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "./schema";
 import { STANDARD_OBJECTS, DEAL_STAGES } from "@openclaw-crm/shared";
+import { eq, and } from "drizzle-orm";
 
 async function seed() {
   const connectionString = process.env.DATABASE_URL;
@@ -84,6 +85,33 @@ async function seed() {
         }
         console.log(`  Created ${DEAL_STAGES.length} deal stages`);
       }
+    }
+  }
+
+  // Seed default agent channels
+  const defaultChannels = ["general", "deals", "tasks"];
+  for (const channelName of defaultChannels) {
+    const existing = await db
+      .select({ id: schema.conversations.id })
+      .from(schema.conversations)
+      .where(
+        and(
+          eq(schema.conversations.workspaceId, workspace.id),
+          eq(schema.conversations.channelName, channelName),
+          eq(schema.conversations.channelType, "channel")
+        )
+      )
+      .limit(1);
+
+    if (existing.length === 0) {
+      await db.insert(schema.conversations).values({
+        workspaceId: workspace.id,
+        userId: "system",
+        title: channelName,
+        channelName,
+        channelType: "channel",
+      });
+      console.log(`Created channel: #${channelName}`);
     }
   }
 

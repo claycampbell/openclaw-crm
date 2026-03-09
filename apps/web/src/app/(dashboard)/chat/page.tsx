@@ -12,6 +12,8 @@ interface Conversation {
   id: string;
   title: string;
   updatedAt: string;
+  channelName?: string;
+  channelType?: string;
 }
 
 interface Message {
@@ -21,6 +23,8 @@ interface Message {
   toolCalls?: unknown[];
   toolCallId?: string;
   toolName?: string;
+  agentName?: string;
+  isProactive?: boolean;
   metadata?: {
     pendingToolCalls?: Array<{
       id: string;
@@ -42,6 +46,7 @@ interface PendingToolCall {
 export default function ChatPage() {
   const { data: session } = useSession();
   const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [channels, setChannels] = useState<Conversation[]>([]);
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -51,10 +56,13 @@ export default function ChatPage() {
   const [confirmLoading, setConfirmLoading] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
   const isStreamingRef = useRef(false);
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const lastMessageAtRef = useRef<string | null>(null);
 
-  // Load conversations
+  // Load conversations and channels
   useEffect(() => {
     fetchConversations();
+    fetchChannels();
   }, []);
 
   async function fetchConversations() {
@@ -65,10 +73,19 @@ export default function ChatPage() {
     }
   }
 
+  async function fetchChannels() {
+    const res = await fetch("/api/v1/chat/channels");
+    if (res.ok) {
+      const data = await res.json();
+      setChannels(data.data || []);
+    }
+  }
+
   // Load messages when switching conversation
   useEffect(() => {
     if (!activeConvId) {
       setMessages([]);
+      lastMessageAtRef.current = null;
       return;
     }
     // Don't reload during streaming — the optimistic message would be wiped
@@ -76,14 +93,69 @@ export default function ChatPage() {
     loadMessages(activeConvId);
   }, [activeConvId]);
 
+  // Poll for new messages every 5 seconds when a conversation is active
+  useEffect(() => {
+    // Clear any existing interval
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
+    }
+
+    if (!activeConvId) return;
+
+    pollIntervalRef.current = setInterval(async () => {
+      // Skip polling during streaming to avoid conflicts
+      if (isStreamingRef.current) return;
+
+      const after = lastMessageAtRef.current;
+      if (!after) return;
+
+      try {
+        const res = await fetch(
+          `/api/v1/chat/conversations/${activeConvId}?after=${encodeURIComponent(after)}`
+        );
+        if (!res.ok) return;
+        const data = await res.json();
+        const newMsgs: Message[] = data.data?.messages || [];
+        if (newMsgs.length > 0) {
+          setMessages((prev) => {
+            const existingIds = new Set(prev.map((m) => m.id));
+            const fresh = newMsgs.filter((m) => !existingIds.has(m.id));
+            if (fresh.length === 0) return prev;
+            // Update last message timestamp
+            const last = fresh[fresh.length - 1];
+            lastMessageAtRef.current = last.createdAt;
+            return [...prev, ...fresh];
+          });
+        }
+      } catch {
+        // Ignore polling errors
+      }
+    }, 5000);
+
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
+    };
+  }, [activeConvId]);
+
   async function loadMessages(convId: string) {
     const res = await fetch(`/api/v1/chat/conversations/${convId}`);
     if (res.ok) {
       const data = await res.json();
-      setMessages(data.data?.messages || []);
+      const msgs: Message[] = data.data?.messages || [];
+      setMessages(msgs);
+
+      // Track last message timestamp for polling
+      if (msgs.length > 0) {
+        lastMessageAtRef.current = msgs[msgs.length - 1].createdAt;
+      } else {
+        lastMessageAtRef.current = new Date().toISOString();
+      }
 
       // Check for any still-pending tool calls
-      const msgs = data.data?.messages || [];
       for (const msg of msgs) {
         if (msg.metadata?.pendingToolCalls) {
           const pending = msg.metadata.pendingToolCalls.find(
@@ -378,6 +450,7 @@ export default function ChatPage() {
     <div className="flex h-full overflow-hidden bg-white">
       {/* Workspace sidebar */}
       <WorkspaceSidebar
+        channels={channels}
         conversations={conversations}
         activeConvId={activeConvId}
         onSelectConversation={setActiveConvId}

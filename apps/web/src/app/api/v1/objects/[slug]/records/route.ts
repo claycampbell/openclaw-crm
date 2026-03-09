@@ -2,6 +2,34 @@ import { NextRequest } from "next/server";
 import { getAuthContext, unauthorized, notFound, badRequest, success } from "@/lib/api-utils";
 import { getObjectBySlug } from "@/services/objects";
 import { listRecords, createRecord } from "@/services/records";
+import { handleRecordCreated } from "@/services/crm-events";
+
+// Extract a human-readable summary from a record's attribute values
+function extractRecordSummary(record: Record<string, unknown>): string {
+  const values = record.values as Record<string, unknown> | undefined;
+  if (!values) return "Unnamed record";
+
+  const nameSlugs = ["name", "full-name", "company-name", "deal-name", "title", "first-name"];
+  for (const slug of nameSlugs) {
+    const val = values[slug];
+    if (!val) continue;
+    // Handle personal_name objects
+    if (typeof val === "object" && val !== null) {
+      const nameObj = val as Record<string, unknown>;
+      if (typeof nameObj.fullName === "string" && nameObj.fullName.trim()) {
+        return nameObj.fullName.trim();
+      }
+      if (typeof nameObj.firstName === "string" && nameObj.firstName.trim()) {
+        const last = typeof nameObj.lastName === "string" ? ` ${nameObj.lastName}` : "";
+        return `${nameObj.firstName}${last}`.trim();
+      }
+    }
+    if (typeof val === "string" && val.trim()) {
+      return val.trim();
+    }
+  }
+  return "Unnamed record";
+}
 
 export async function GET(
   req: NextRequest,
@@ -45,5 +73,15 @@ export async function POST(
   }
 
   const record = await createRecord(obj.id, values, ctx.userId);
+
+  // Fire-and-forget — don't await, don't let it block the response
+  void handleRecordCreated({
+    objectSlug: slug,
+    objectSingularName: obj.singularName,
+    recordId: (record as Record<string, unknown>).id as string,
+    workspaceId: ctx.workspaceId,
+    recordSummary: extractRecordSummary(record as Record<string, unknown>),
+  }).catch(() => {}); // swallow errors
+
   return success(record, 201);
 }

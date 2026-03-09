@@ -11,6 +11,8 @@ interface Message {
   content: string | null;
   toolCalls?: unknown[];
   metadata?: unknown;
+  agentName?: string;
+  isProactive?: boolean;
   createdAt: string;
 }
 
