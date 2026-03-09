@@ -78,9 +78,9 @@ export async function POST(
   void handleRecordCreated({
     objectSlug: slug,
     objectSingularName: obj.singularName,
-    recordId: (record as Record<string, unknown>).id as string,
+    recordId: (record as unknown as Record<string, unknown>).id as string,
     workspaceId: ctx.workspaceId,
-    recordSummary: extractRecordSummary(record as Record<string, unknown>),
+    recordSummary: extractRecordSummary(record as unknown as Record<string, unknown>),
   }).catch(() => {}); // swallow errors
 
   return success(record, 201);

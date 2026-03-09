@@ -16,6 +16,13 @@ interface Conversation {
   channelType?: string;
 }
 
+interface Channel {
+  id: string;
+  title: string;
+  channelName: string;
+  updatedAt: string;
+}
+
 interface Message {
   id: string;
   role: "user" | "assistant" | "system" | "tool";
@@ -46,7 +53,7 @@ interface PendingToolCall {
 export default function ChatPage() {
   const { data: session } = useSession();
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [channels, setChannels] = useState<Conversation[]>([]);
+  const [channels, setChannels] = useState<Channel[]>([]);
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");

@@ -71,9 +71,9 @@ export async function PATCH(
   void handleRecordUpdated({
     objectSlug: slug,
     objectSingularName: obj.singularName,
-    recordId: (record as Record<string, unknown>).id as string,
+    recordId: (record as unknown as Record<string, unknown>).id as string,
     workspaceId: ctx.workspaceId,
-    recordSummary: extractRecordSummary(record as Record<string, unknown>),
+    recordSummary: extractRecordSummary(record as unknown as Record<string, unknown>),
     changedFields: Object.keys(values),
   }).catch(() => {}); // swallow errors
 
