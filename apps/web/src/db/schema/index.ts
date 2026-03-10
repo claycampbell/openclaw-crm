@@ -8,3 +8,6 @@ export * from "./tasks";
 export * from "./notifications";
 export * from "./api-keys";
 export * from "./chat";
+export * from "./approvals";
+export * from "./generated-assets";
+export * from "./contracts";
