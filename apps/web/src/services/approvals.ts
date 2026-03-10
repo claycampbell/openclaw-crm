@@ -233,7 +233,7 @@ export async function getApprovalRequest(
   return {
     ...request,
     context: (request.context as Record<string, unknown>) ?? {},
-    rule: rule.id
+    rule: rule?.id
       ? {
           id: rule.id,
           name: rule.name,
@@ -285,14 +285,14 @@ export async function listApprovalRequests(
   // If approverId filter, check rule approverIds in memory (JSON array)
   const results: ApprovalRequestWithRule[] = [];
   for (const { request, rule } of rows) {
-    if (approverId && rule.id) {
+    if (approverId && rule != null && rule.id) {
       const approverIds = (rule.approverIds as string[]) ?? [];
       if (!approverIds.includes(approverId)) continue;
     }
     results.push({
       ...request,
       context: (request.context as Record<string, unknown>) ?? {},
-      rule: rule.id
+      rule: rule?.id
         ? {
             id: rule.id,
             name: rule.name,

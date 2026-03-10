@@ -38,7 +38,7 @@ export function InboxList({ initialAssets, recordNames }: InboxListProps) {
         <AssetCard
           key={asset.id}
           asset={asset}
-          recordName={recordNames[asset.recordId]}
+          recordName={asset.recordId ? recordNames[asset.recordId] : undefined}
           onApproved={handleApproved}
           onRejected={handleRejected}
         />

@@ -20,7 +20,7 @@ export default function InboxPage() {
         setAssets(fetchedAssets);
 
         // Fetch record names for display
-        const recordIds = [...new Set(fetchedAssets.map((a) => a.recordId))];
+        const recordIds = [...new Set(fetchedAssets.map((a) => a.recordId).filter((id): id is string => id !== null))];
         if (recordIds.length > 0) {
           const names: Record<string, string> = {};
           await Promise.all(

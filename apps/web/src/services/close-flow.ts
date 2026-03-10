@@ -225,10 +225,10 @@ async function loadDealContext(
   let repName: string | null = null;
   if (rec.createdBy) {
     try {
-      const userRow = await db.execute(
+      const userRows = Array.from(await db.execute(
         sql`SELECT name FROM "user" WHERE id = ${rec.createdBy}`
-      );
-      repName = (userRow.rows[0] as { name: string } | undefined)?.name ?? null;
+      )) as { name: string }[];
+      repName = userRows[0]?.name ?? null;
     } catch {}
   }
 

@@ -276,10 +276,10 @@ export async function getRepDashboard(
   );
 
   // Task count
-  const taskCountResult = await db.execute(
+  const taskCountRows2 = Array.from(await db.execute(
     sql`SELECT count(*)::int AS cnt FROM tasks WHERE workspace_id = ${workspaceId} AND created_by = ${userId} AND is_completed = false`
-  );
-  const openTaskCount = (taskCountResult.rows[0] as { cnt: number })?.cnt ?? 0;
+  )) as { cnt: number }[];
+  const openTaskCount = taskCountRows2[0]?.cnt ?? 0;
 
   // Pending approvals requested by this user
   const [pendingApprovalResult] = await db
@@ -364,15 +364,15 @@ export async function getManagerDashboard(workspaceId: string): Promise<ManagerD
 
   // Get task counts per user in batch
   const memberIds = members.map((m) => m.userId);
-  const taskCounts =
+  const taskCountRows: { created_by: string; cnt: number }[] =
     memberIds.length > 0
-      ? await db.execute(
+      ? Array.from(await db.execute(
           sql`SELECT created_by, count(*)::int AS cnt FROM tasks WHERE workspace_id = ${workspaceId} AND created_by = ANY(${memberIds}) AND is_completed = false GROUP BY created_by`
-        )
-      : { rows: [] };
+        )) as { created_by: string; cnt: number }[]
+      : [];
 
   const taskCountByUser = new Map<string, number>();
-  for (const row of taskCounts.rows as { created_by: string; cnt: number }[]) {
+  for (const row of taskCountRows) {
     taskCountByUser.set(row.created_by, row.cnt);
   }
 
@@ -388,15 +388,15 @@ export async function getManagerDashboard(workspaceId: string): Promise<ManagerD
     );
 
   // Build team metrics — need user names from auth
-  const userRows =
+  const userDataRows: { id: string; name: string; email: string }[] =
     memberIds.length > 0
-      ? await db.execute(
+      ? Array.from(await db.execute(
           sql`SELECT id, name, email FROM "user" WHERE id = ANY(${memberIds})`
-        )
-      : { rows: [] };
+        )) as { id: string; name: string; email: string }[]
+      : [];
 
   const userMap = new Map<string, { name: string; email: string }>();
-  for (const row of userRows.rows as { id: string; name: string; email: string }[]) {
+  for (const row of userDataRows) {
     userMap.set(row.id, { name: row.name, email: row.email });
   }
 
@@ -492,10 +492,10 @@ export async function getUserDashboardPreference(
   workspaceId: string,
   userId: string
 ): Promise<"rep" | "manager" | "leadership"> {
-  const result = await db.execute(
+  const settingRows = Array.from(await db.execute(
     sql`SELECT settings FROM workspaces WHERE id = ${workspaceId}`
-  );
-  const settings = (result.rows[0] as { settings: Record<string, unknown> | null })?.settings ?? {};
+  )) as { settings: Record<string, unknown> | null }[];
+  const settings = settingRows[0]?.settings ?? {};
   const dashPrefs = (settings.dashboardPreferences as Record<string, string> | undefined) ?? {};
   const pref = dashPrefs[userId];
   if (pref === "manager" || pref === "leadership") return pref;

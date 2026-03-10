@@ -19,11 +19,12 @@ export async function register() {
         documentType?: string;
       };
       if (process.env.NODE_ENV !== "production") {
-        const generatedAssets = await import("@/services/generated-assets");
-        await generatedAssets.createDraft({
+        const generatedAssetsService = await import("@/services/generated-assets");
+        await generatedAssetsService.createDraft({
           workspaceId,
           recordId,
-          assetType: (documentType as generatedAssets.AssetType) ?? "opportunity_brief",
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          assetType: ((documentType ?? "opportunity_brief") as any),
           content: `[Placeholder draft — ai_generate job received for ${documentType ?? "unknown"} on record ${recordId ?? "none"}]`,
           modelUsed: "placeholder",
           promptVersion: "v0",

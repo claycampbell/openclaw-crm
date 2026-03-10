@@ -34,13 +34,13 @@ export async function enqueueJob(
   workspaceId: string,
   type: JobType,
   payload: JobPayload,
-  scheduledAt?: Date
+  runAt?: Date
 ): Promise<void> {
   await db.insert(backgroundJobs).values({
     workspaceId,
     type,
     status: "pending",
-    payload: payload as Record<string, unknown>,
-    scheduledAt: scheduledAt ?? new Date(),
+    payload: payload as unknown as Record<string, unknown>,
+    runAt: runAt ?? new Date(),
   });
 }

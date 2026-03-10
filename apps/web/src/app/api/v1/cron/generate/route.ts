@@ -24,10 +24,10 @@ export async function GET(req: NextRequest) {
       and(
         eq(backgroundJobs.type, "ai_generate"),
         eq(backgroundJobs.status, "pending"),
-        lte(backgroundJobs.scheduledAt, new Date())
+        lte(backgroundJobs.runAt, new Date())
       )
     )
-    .orderBy(backgroundJobs.scheduledAt)
+    .orderBy(backgroundJobs.runAt)
     .limit(BATCH_SIZE);
 
   if (pendingJobs.length === 0) {
@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
     // Optimistically mark as running
     await db
       .update(backgroundJobs)
-      .set({ status: "running", startedAt: new Date(), attempts: job.attempts + 1 })
+      .set({ status: "running", startedAt: new Date(), retries: String(Number(job.retries) + 1) })
       .where(and(eq(backgroundJobs.id, job.id), eq(backgroundJobs.status, "pending")));
 
     const payload = job.payload as {
@@ -53,28 +53,34 @@ export async function GET(req: NextRequest) {
       competitorName?: string;
     };
 
+    const workspaceId = job.workspaceId;
+    if (!workspaceId) {
+      console.warn(`[cron/generate] Job ${job.id} has no workspaceId, skipping`);
+      continue;
+    }
+
     try {
       switch (payload.documentType) {
         case "opportunity_brief":
-          await generateOpportunityBrief(job.workspaceId, payload.recordId);
+          await generateOpportunityBrief(workspaceId, payload.recordId);
           break;
         case "proposal":
-          await generateProposal(job.workspaceId, payload.recordId);
+          await generateProposal(workspaceId, payload.recordId);
           break;
         case "deck":
-          await generateDeck(job.workspaceId, payload.recordId);
+          await generateDeck(workspaceId, payload.recordId);
           break;
         case "meeting_prep":
           if (payload.meetingId) {
             await generateMeetingPrepBrief(
-              job.workspaceId,
+              workspaceId,
               payload.recordId,
               payload.meetingId
             );
           }
           break;
         case "followup":
-          await generatePostMeetingFollowup(job.workspaceId, payload.recordId, {
+          await generatePostMeetingFollowup(workspaceId, payload.recordId, {
             type: (payload.triggerType as "meeting_ended" | "note_added") ?? "meeting_ended",
             noteText: payload.noteText,
           });
@@ -82,7 +88,7 @@ export async function GET(req: NextRequest) {
         case "battlecard":
           if (payload.competitorName) {
             await generateBattlecard(
-              job.workspaceId,
+              workspaceId,
               payload.recordId,
               payload.competitorName
             );
@@ -101,15 +107,16 @@ export async function GET(req: NextRequest) {
     } catch (err) {
       console.error(`[cron/generate] Job ${job.id} failed:`, err);
 
-      const newAttempts = job.attempts + 1;
-      const failed = newAttempts >= job.maxAttempts;
+      const newRetries = Number(job.retries) + 1;
+      const maxRetries = 3;
+      const failed = newRetries >= maxRetries;
 
       await db
         .update(backgroundJobs)
         .set({
           status: failed ? "failed" : "pending",
-          lastError: String(err),
-          completedAt: failed ? new Date() : undefined,
+          errorMessage: String(err),
+          ...(failed ? { completedAt: new Date() } : {}),
         })
         .where(eq(backgroundJobs.id, job.id));
     }

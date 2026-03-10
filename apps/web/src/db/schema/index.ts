@@ -18,14 +18,10 @@ export * from "./email-messages";
 export * from "./calendar-events";
 export * from "./call-recordings";
 // Phase 3 AI asset generation + outbound
-export * from "./background-jobs";
-export * from "./signal-events";
-export * from "./documents";
 export * from "./sequences";
 export * from "./forms";
 // Phase 1 automation engine
 export * from "./automations";
-export * from "./assets";
 // Phase 4 close flow + dashboards
 export * from "./approvals";
 export * from "./contracts";

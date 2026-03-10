@@ -30,15 +30,13 @@ export async function generateMeetingPrepBrief(
     .where(eq(calendarEvents.id, meetingId))
     .limit(1);
 
-  const attendeeList = Array.isArray(meeting?.attendees)
-    ? (meeting.attendees as Array<{ name?: string; email?: string }>)
-        .map((a) => a.name ?? a.email ?? "Unknown")
-        .join(", ")
+  const attendeeList = Array.isArray(meeting?.attendeeEmails)
+    ? meeting.attendeeEmails.join(", ")
     : "Unknown attendees";
 
   const meetingTitle = meeting?.title ?? "Upcoming meeting";
-  const startTime = meeting?.startTime
-    ? new Date(meeting.startTime).toLocaleString()
+  const startTime = meeting?.startAt
+    ? new Date(meeting.startAt).toLocaleString()
     : "Unknown time";
 
   const prompt = `You are a sales coach. Write a meeting prep brief for the following upcoming deal meeting.

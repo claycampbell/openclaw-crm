@@ -4,7 +4,7 @@
 import { db } from "@/db";
 import { generatedAssets } from "@/db/schema";
 import { eq, and, desc } from "drizzle-orm";
-import type { AssetType, ContextTier, GeneratedAsset } from "@/db/schema/documents";
+import type { AssetType, AssetStatus, ContextTier, GeneratedAsset } from "@/db/schema/documents";
 
 // ─── Asset Type Constants ─────────────────────────────────────────────────────
 
@@ -31,6 +31,11 @@ export const ASSET_TIER_MAP: Record<AssetType, ContextTier> = {
   proposal: "full",
   deck: "full",
   battlecard: "full",
+  // Legacy Phase 1/4 types
+  handoff_brief: "full",
+  contract: "full",
+  sow: "full",
+  follow_up: "light",
 };
 
 export const ASSET_TYPE_LABELS: Record<AssetType, string> = {
@@ -41,6 +46,11 @@ export const ASSET_TYPE_LABELS: Record<AssetType, string> = {
   followup: "Follow-Up Draft",
   battlecard: "Battlecard",
   sequence_step: "Sequence Step",
+  // Legacy Phase 1/4 types
+  handoff_brief: "Handoff Brief",
+  contract: "Contract",
+  sow: "Statement of Work",
+  follow_up: "Follow-Up",
 };
 
 // ─── Service Functions ────────────────────────────────────────────────────────
@@ -68,7 +78,7 @@ export async function createDraftAsset(
       recordId,
       assetType,
       status: "draft",
-      content,
+      structuredContent: content,
       contentMd,
       modelUsed,
       promptVersion,
@@ -110,7 +120,7 @@ export async function rejectAsset(
   const [asset] = await db
     .update(generatedAssets)
     .set({
-      status: "archived",
+      status: "rejected",
       rejectedBy: userId,
       rejectedAt: new Date(),
     })
@@ -137,7 +147,7 @@ export async function listAssets(
 
   const conditions = [
     eq(generatedAssets.workspaceId, workspaceId),
-    eq(generatedAssets.status, status),
+    eq(generatedAssets.status, status as AssetStatus),
   ];
 
   if (recordId) {

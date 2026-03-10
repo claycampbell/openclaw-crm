@@ -9,15 +9,13 @@
  */
 import { db } from "@/db";
 import {
-  records,
   recordValues,
   attributes,
-  objects,
   notes,
   signalEvents,
   emailMessages,
 } from "@/db/schema";
-import { eq, and, desc, inArray, sql } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -94,8 +92,15 @@ export async function assembleContext(
 
   if (recentNotes.length > 0) {
     const noteLines = recentNotes.map(
-      (n, i) =>
-        `Note ${i + 1} (${n.createdAt.toLocaleDateString()}):\n${stripHtml(n.content ?? "")}`
+      (n, i) => {
+        let text = "";
+        if (typeof n.content === "string") {
+          text = n.content.slice(0, 500);
+        } else if (n.content && typeof n.content === "object") {
+          text = extractTipTapText(n.content as Record<string, unknown>).slice(0, 500);
+        }
+        return `Note ${i + 1} (${n.createdAt.toLocaleDateString()}):\n${text}`;
+      }
     );
     sections.push(`## Notes\n\n${noteLines.join("\n\n")}`);
   }
@@ -106,9 +111,9 @@ export async function assembleContext(
     const signals = await db
       .select({
         type: signalEvents.type,
-        source: signalEvents.source,
+        provider: signalEvents.provider,
         payload: signalEvents.payload,
-        occurredAt: signalEvents.occurredAt,
+        createdAt: signalEvents.createdAt,
       })
       .from(signalEvents)
       .where(
@@ -117,13 +122,13 @@ export async function assembleContext(
           eq(signalEvents.recordId, recordId)
         )
       )
-      .orderBy(desc(signalEvents.occurredAt))
+      .orderBy(desc(signalEvents.createdAt))
       .limit(10);
 
     if (signals.length > 0) {
       const signalLines = signals.map(
         (s) =>
-          `- [${s.occurredAt.toLocaleDateString()}] ${s.type} (${s.source})`
+          `- [${s.createdAt.toLocaleDateString()}] ${s.type} (${s.provider ?? "crm"})`
       );
       sections.push(`## Recent Activity Signals\n\n${signalLines.join("\n")}`);
     }
@@ -133,7 +138,7 @@ export async function assembleContext(
       .select({
         subject: emailMessages.subject,
         direction: emailMessages.direction,
-        sentAt: emailMessages.sentAt,
+        receivedAt: emailMessages.receivedAt,
       })
       .from(emailMessages)
       .where(
@@ -142,13 +147,13 @@ export async function assembleContext(
           eq(emailMessages.recordId, recordId)
         )
       )
-      .orderBy(desc(emailMessages.sentAt))
+      .orderBy(desc(emailMessages.receivedAt))
       .limit(5);
 
     if (emails.length > 0) {
       const emailLines = emails.map(
         (e) =>
-          `- [${e.sentAt?.toLocaleDateString() ?? "unknown"}] ${e.direction === "inbound" ? "Received" : "Sent"}: "${e.subject ?? "(no subject)"}"`
+          `- [${e.receivedAt?.toLocaleDateString() ?? "unknown"}] ${e.direction === "inbound" ? "Received" : "Sent"}: "${e.subject ?? "(no subject)"}"`
       );
       sections.push(`## Email History (Recent)\n\n${emailLines.join("\n")}`);
     }
@@ -206,9 +211,12 @@ function slugToLabel(slug: string): string {
     .join(" ");
 }
 
-function stripHtml(html: string): string {
-  return html
-    .replace(/<[^>]+>/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+function extractTipTapText(node: Record<string, unknown>): string {
+  if (node.type === "text" && typeof node.text === "string") {
+    return node.text;
+  }
+  if (Array.isArray(node.content)) {
+    return (node.content as Record<string, unknown>[]).map(extractTipTapText).join(" ");
+  }
+  return "";
 }

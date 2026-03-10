@@ -5,9 +5,8 @@
 import { enqueueJob } from "@/lib/job-queue";
 import { detectCompetitors } from "./competitor-detector";
 import { db } from "@/db";
-import { sequenceEnrollments } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
-import { stopEnrollment } from "./email-sequences";
+import { signalEvents } from "@/db/schema";
+import { eq } from "drizzle-orm";
 
 export interface SignalEventInput {
   type: string;
@@ -15,6 +14,30 @@ export interface SignalEventInput {
   recordId?: string | null;
   source?: string;
   payload?: Record<string, unknown>;
+}
+
+/**
+ * Load a signal event by ID and evaluate it for automation rules.
+ * Called by the job handler registered in instrumentation.ts.
+ */
+export async function evaluateSignalById(signalEventId: string): Promise<void> {
+  const [signal] = await db
+    .select()
+    .from(signalEvents)
+    .where(eq(signalEvents.id, signalEventId))
+    .limit(1);
+
+  if (!signal) {
+    console.warn(`[automation] Signal event not found: ${signalEventId}`);
+    return;
+  }
+
+  await evaluateSignalForGeneration({
+    type: signal.type,
+    workspaceId: signal.workspaceId,
+    recordId: signal.recordId ?? undefined,
+    payload: (signal.payload ?? {}) as Record<string, unknown>,
+  });
 }
 
 /**

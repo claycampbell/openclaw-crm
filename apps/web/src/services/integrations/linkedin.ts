@@ -61,17 +61,22 @@ async function upsertRecordValue(
 
   const attributeId = attrs[0].id;
 
+  // record_values has no unique constraint on (recordId, attributeId),
+  // so we delete the existing value first, then insert fresh.
   await db
-    .insert(recordValues)
-    .values({
-      recordId,
-      attributeId,
-      textValue: value,
-    })
-    .onConflictDoUpdate({
-      target: [recordValues.recordId, recordValues.attributeId],
-      set: { textValue: value },
-    });
+    .delete(recordValues)
+    .where(
+      and(
+        eq(recordValues.recordId, recordId),
+        eq(recordValues.attributeId, attributeId)
+      )
+    );
+
+  await db.insert(recordValues).values({
+    recordId,
+    attributeId,
+    textValue: value,
+  });
 }
 
 // ─── Person enrichment ────────────────────────────────────────────────────────
