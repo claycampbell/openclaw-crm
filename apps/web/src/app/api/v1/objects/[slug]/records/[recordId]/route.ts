@@ -75,6 +75,8 @@ export async function PATCH(
     workspaceId: ctx.workspaceId,
     recordSummary: extractRecordSummary(record as unknown as Record<string, unknown>),
     changedFields: Object.keys(values),
+    newValues: values,
+    userId: ctx.userId,
   }).catch(() => {}); // swallow errors
 
   return success(record);

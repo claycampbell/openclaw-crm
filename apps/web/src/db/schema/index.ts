@@ -23,3 +23,6 @@ export * from "./signal-events";
 export * from "./documents";
 export * from "./sequences";
 export * from "./forms";
+// Phase 4 close flow + dashboards
+export * from "./approvals";
+export * from "./contracts";

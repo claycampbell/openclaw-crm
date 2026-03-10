@@ -25,6 +25,10 @@ import {
   Inbox,
   Swords,
   Mail,
+  BarChart2,
+  ClipboardCheck,
+  FileText,
+  PartyPopper,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -38,12 +42,16 @@ import { useTheme } from "next-themes";
 const mainNav = [
   { href: "/home", label: "Home", icon: Home },
   { href: "/inbox", label: "Inbox", icon: Inbox },
+  { href: "/dashboard", label: "Dashboard", icon: BarChart2 },
   { href: "/chat", label: "Chat", icon: MessageSquare },
   { href: "/tasks", label: "Tasks", icon: CheckSquare },
   { href: "/notes", label: "Notes", icon: StickyNote },
   { href: "/notifications", label: "Notifications", icon: Bell },
   { href: "/sequences", label: "Sequences", icon: Mail },
   { href: "/battlecards", label: "Battlecards", icon: Swords },
+  { href: "/approvals", label: "Approvals", icon: ClipboardCheck },
+  { href: "/contracts", label: "Contracts", icon: FileText },
+  { href: "/handoff", label: "Handoff", icon: PartyPopper },
 ];
 
 const objectNav = [

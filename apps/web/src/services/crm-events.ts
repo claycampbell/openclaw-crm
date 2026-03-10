@@ -1,4 +1,6 @@
 import { getOrCreateChannel, postAgentMessage } from "./agent-channels";
+import { triggerCloseFlow, isClosedWonStage } from "./close-flow";
+import { evaluateDealForApproval } from "./approvals";
 
 // Handle a record being created — Aria posts to the relevant channel
 export async function handleRecordCreated(params: {
@@ -57,21 +59,48 @@ export async function handleRecordUpdated(params: {
   workspaceId: string;
   recordSummary: string;
   changedFields: string[]; // e.g. ["stage", "amount"]
+  newValues?: Record<string, unknown>; // new field values after update
+  userId?: string;
 }): Promise<void> {
   try {
-    const { objectSlug, workspaceId, recordSummary, changedFields } = params;
+    const { objectSlug, workspaceId, recordSummary, changedFields, newValues, userId } = params;
 
-    // Only post for deals when "stage" field changed
-    if (objectSlug !== "deals" || !changedFields.includes("stage")) {
-      return;
+    // Only process deals
+    if (objectSlug !== "deals") return;
+
+    const stageChanged = changedFields.some((f) => f === "stage" || f === "deal-stage" || f === "status");
+
+    if (stageChanged) {
+      const channelName = "deals";
+      const conversationId = await getOrCreateChannel(workspaceId, channelName);
+
+      const newStage = (typeof newValues?.stage === "string" ? newValues.stage : null) ??
+        (typeof newValues?.["deal-stage"] === "string" ? newValues["deal-stage"] as string : null);
+
+      // Check if this is a closed-won transition
+      if (newStage && isClosedWonStage(newStage)) {
+        // Trigger close flow in background
+        if (userId) {
+          triggerCloseFlow(workspaceId, params.recordId, userId).catch(() => {});
+        }
+
+        const message = `🎉 Deal closed-won: **${recordSummary}**! I'm generating a customer handoff brief — you'll find it in the Approvals queue shortly.`;
+        await postAgentMessage(conversationId, message, "Aria");
+      } else {
+        const stageLabel = newStage ? ` → ${newStage}` : "";
+        const message = `🔄 Deal stage updated: **${recordSummary}**${stageLabel}. Want me to suggest next steps?`;
+        await postAgentMessage(conversationId, message, "Aria");
+      }
+
+      // Evaluate approval rules for stage change
+      if (userId && newStage) {
+        evaluateDealForApproval(workspaceId, {
+          dealId: params.recordId,
+          newStage,
+          requestedBy: userId,
+        }).catch(() => {});
+      }
     }
-
-    const channelName = objectSlug === "deals" ? "deals" : "general";
-    const conversationId = await getOrCreateChannel(workspaceId, channelName);
-
-    const message = `🔄 Deal updated: **${recordSummary}** — stage changed. Want me to suggest next steps?`;
-
-    await postAgentMessage(conversationId, message, "Aria");
   } catch {
     // Never throw — this is fire-and-forget
   }
