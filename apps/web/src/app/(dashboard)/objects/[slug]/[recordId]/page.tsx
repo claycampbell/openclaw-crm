@@ -19,6 +19,7 @@ import {
   Box,
 } from "lucide-react";
 import { extractPersonalName } from "@/lib/display-name";
+import { NextBestActionBadge } from "@/components/analytics/NextBestActionBadge";
 
 interface ObjectData {
   id: string;
@@ -239,6 +240,13 @@ export default function RecordDetailPage() {
       {/* Right sidebar - metadata */}
       <div className="hidden w-64 shrink-0 border-l border-border lg:block">
         <div className="p-4 space-y-4">
+          {/* Next best action — only shown for deals */}
+          {object.slug === "deals" && (
+            <div className="space-y-1.5">
+              <NextBestActionBadge recordId={record.id} />
+            </div>
+          )}
+
           <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
             Record Info
           </h3>

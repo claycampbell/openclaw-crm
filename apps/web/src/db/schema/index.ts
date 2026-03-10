@@ -23,6 +23,9 @@ export * from "./signal-events";
 export * from "./documents";
 export * from "./sequences";
 export * from "./forms";
+// Phase 1 automation engine
+export * from "./automations";
+export * from "./assets";
 // Phase 4 close flow + dashboards
 export * from "./approvals";
 export * from "./contracts";

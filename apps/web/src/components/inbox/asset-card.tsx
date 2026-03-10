@@ -1,0 +1,242 @@
+"use client";
+
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Check, X, ChevronDown, ChevronUp, Clock } from "lucide-react";
+
+interface GeneratedAsset {
+  id: string;
+  workspaceId: string;
+  recordId: string | null;
+  assetType: string;
+  status: string;
+  content: string;
+  modelUsed: string | null;
+  promptVersion: string | null;
+  generatedAt: string;
+  approvedBy: string | null;
+  approvedAt: string | null;
+  rejectedBy: string | null;
+  rejectedAt: string | null;
+  rejectionNote: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface AssetCardProps {
+  asset: GeneratedAsset;
+  onStatusChange: (id: string, newStatus: string) => void;
+}
+
+const assetTypeLabels: Record<string, string> = {
+  opportunity_brief: "Opportunity Brief",
+  proposal: "Proposal",
+  presentation_deck: "Presentation Deck",
+  meeting_prep_brief: "Meeting Prep Brief",
+  post_meeting_followup: "Post-Meeting Follow-up",
+  competitive_battlecard: "Competitive Battlecard",
+  contract: "Contract",
+  handoff_brief: "Handoff Brief",
+  email_sequence_step: "Email Sequence Step",
+};
+
+function timeAgo(date: string) {
+  const seconds = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
+  if (seconds < 60) return "just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
+
+export function AssetCard({ asset, onStatusChange }: AssetCardProps) {
+  const [expanded, setExpanded] = useState(false);
+  const [showRejectForm, setShowRejectForm] = useState(false);
+  const [rejectionNote, setRejectionNote] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const isDraft = asset.status === "draft";
+  const isApproved = asset.status === "approved";
+  const isRejected = asset.status === "rejected";
+
+  async function handleApprove() {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/v1/assets/${asset.id}/approve`, { method: "POST" });
+      if (res.ok) {
+        onStatusChange(asset.id, "approved");
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleReject() {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/v1/assets/${asset.id}/reject`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rejectionNote: rejectionNote || undefined }),
+      });
+      if (res.ok) {
+        onStatusChange(asset.id, "rejected");
+        setShowRejectForm(false);
+        setRejectionNote("");
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const contentPreview = asset.content.slice(0, 300);
+  const hasMore = asset.content.length > 300;
+
+  return (
+    <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Badge variant="secondary" className="text-xs">
+            {assetTypeLabels[asset.assetType] ?? asset.assetType}
+          </Badge>
+          {isApproved && (
+            <Badge className="text-xs bg-green-500/15 text-green-700 dark:text-green-400 border-green-500/20">
+              Approved
+            </Badge>
+          )}
+          {isRejected && (
+            <Badge className="text-xs bg-red-500/15 text-red-700 dark:text-red-400 border-red-500/20">
+              Rejected
+            </Badge>
+          )}
+          {isDraft && (
+            <Badge className="text-xs bg-yellow-500/15 text-yellow-700 dark:text-yellow-400 border-yellow-500/20">
+              Pending Review
+            </Badge>
+          )}
+        </div>
+        <div className="flex items-center gap-1 text-xs text-muted-foreground shrink-0">
+          <Clock className="h-3 w-3" />
+          <span>{timeAgo(asset.createdAt)}</span>
+        </div>
+      </div>
+
+      {/* Content preview */}
+      <div className="text-sm text-muted-foreground leading-relaxed">
+        <p className="whitespace-pre-line">
+          {expanded ? asset.content : contentPreview}
+          {!expanded && hasMore && "..."}
+        </p>
+        {hasMore && (
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="mt-1 flex items-center gap-1 text-xs text-primary hover:underline"
+          >
+            {expanded ? (
+              <>
+                <ChevronUp className="h-3 w-3" />
+                Show less
+              </>
+            ) : (
+              <>
+                <ChevronDown className="h-3 w-3" />
+                Show full content
+              </>
+            )}
+          </button>
+        )}
+      </div>
+
+      {/* Model info */}
+      {asset.modelUsed && (
+        <p className="text-xs text-muted-foreground">
+          Generated by: <span className="font-mono">{asset.modelUsed}</span>
+          {asset.promptVersion && ` · ${asset.promptVersion}`}
+        </p>
+      )}
+
+      {/* Rejection note display */}
+      {isRejected && asset.rejectionNote && (
+        <div className="rounded-md bg-red-500/10 border border-red-500/20 px-3 py-2">
+          <p className="text-xs text-red-700 dark:text-red-400">
+            <span className="font-medium">Rejection note:</span> {asset.rejectionNote}
+          </p>
+        </div>
+      )}
+
+      {/* Approval timestamp */}
+      {isApproved && asset.approvedAt && (
+        <p className="text-xs text-muted-foreground">
+          Approved {timeAgo(asset.approvedAt)}
+        </p>
+      )}
+
+      {/* Actions — only shown for draft items */}
+      {isDraft && (
+        <div className="space-y-2">
+          {showRejectForm ? (
+            <div className="space-y-2">
+              <textarea
+                value={rejectionNote}
+                onChange={(e) => setRejectionNote(e.target.value)}
+                placeholder="Optional: add a note about why you&apos;re rejecting this draft..."
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-none"
+                rows={2}
+              />
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={handleReject}
+                  disabled={loading}
+                  className="h-7 text-xs"
+                >
+                  <X className="mr-1 h-3 w-3" />
+                  Confirm Reject
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setShowRejectForm(false);
+                    setRejectionNote("");
+                  }}
+                  disabled={loading}
+                  className="h-7 text-xs"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                onClick={handleApprove}
+                disabled={loading}
+                className="h-7 text-xs bg-green-600 hover:bg-green-700 text-white"
+              >
+                <Check className="mr-1 h-3 w-3" />
+                Approve
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setShowRejectForm(true)}
+                disabled={loading}
+                className="h-7 text-xs text-red-600 hover:text-red-700 border-red-200 hover:border-red-300"
+              >
+                <X className="mr-1 h-3 w-3" />
+                Reject
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
