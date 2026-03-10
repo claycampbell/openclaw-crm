@@ -3,6 +3,7 @@ import { getAuthContext, unauthorized, notFound, badRequest, success } from "@/l
 import { getObjectBySlug } from "@/services/objects";
 import { listRecords, createRecord } from "@/services/records";
 import { handleRecordCreated } from "@/services/crm-events";
+import { scheduleEnrichment } from "@/services/integrations/linkedin";
 
 // Extract a human-readable summary from a record's attribute values
 function extractRecordSummary(record: Record<string, unknown>): string {
@@ -74,14 +75,22 @@ export async function POST(
 
   const record = await createRecord(obj.id, values, ctx.userId);
 
+  const recordId = (record as unknown as Record<string, unknown>).id as string;
+
   // Fire-and-forget — don't await, don't let it block the response
   void handleRecordCreated({
     objectSlug: slug,
     objectSingularName: obj.singularName,
-    recordId: (record as unknown as Record<string, unknown>).id as string,
+    recordId,
     workspaceId: ctx.workspaceId,
     recordSummary: extractRecordSummary(record as unknown as Record<string, unknown>),
   }).catch(() => {}); // swallow errors
+
+  // Auto-enrich new People records when email is provided
+  if (slug === "people" && values["email"]) {
+    const email = values["email"] as string;
+    void scheduleEnrichment(ctx.workspaceId, recordId, "people", email).catch(() => {});
+  }
 
   return success(record, 201);
 }
