@@ -22,6 +22,9 @@ import {
   Check,
   Sun,
   Moon,
+  Inbox,
+  Swords,
+  Mail,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -34,10 +37,13 @@ import { useTheme } from "next-themes";
 
 const mainNav = [
   { href: "/home", label: "Home", icon: Home },
+  { href: "/inbox", label: "Inbox", icon: Inbox },
   { href: "/chat", label: "Chat", icon: MessageSquare },
   { href: "/tasks", label: "Tasks", icon: CheckSquare },
   { href: "/notes", label: "Notes", icon: StickyNote },
   { href: "/notifications", label: "Notifications", icon: Bell },
+  { href: "/sequences", label: "Sequences", icon: Mail },
+  { href: "/battlecards", label: "Battlecards", icon: Swords },
 ];
 
 const objectNav = [
