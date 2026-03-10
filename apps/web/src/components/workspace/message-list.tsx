@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, Hash } from "lucide-react";
+import { ChevronDown, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MessageItem, AgentTypingIndicator } from "./message-item";
 
@@ -104,13 +104,13 @@ export function MessageList({
         {visibleMessages.length === 0 && !streaming && (
           <div className="flex flex-col items-center justify-center h-full py-20 text-center px-8">
             <div className="flex items-center justify-center h-16 w-16 rounded-full bg-violet-100 mb-4">
-              <Hash className="h-8 w-8 text-violet-500" />
+              <MessageSquare className="h-8 w-8 text-violet-500" />
             </div>
             <h2 className="text-xl font-bold text-zinc-900 mb-1">
-              #{channelName || "conversation"}
+              {channelName || "New conversation"}
             </h2>
             <p className="text-sm text-zinc-500 max-w-xs leading-relaxed">
-              This is the beginning of your conversation with Aria. Ask anything about your CRM data.
+              Ask anything about your CRM data.
             </p>
           </div>
         )}
