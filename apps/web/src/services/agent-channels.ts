@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { conversations, messages } from "@/db/schema";
+import { conversations, messages, workspaceMembers } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 
 // Find or create a named channel for a workspace
@@ -24,13 +24,29 @@ export async function getOrCreateChannel(
     return existing[0].id;
   }
 
+  // Use the workspace admin's userId (channels need a valid FK)
+  const [admin] = await db
+    .select({ userId: workspaceMembers.userId })
+    .from(workspaceMembers)
+    .where(
+      and(
+        eq(workspaceMembers.workspaceId, workspaceId),
+        eq(workspaceMembers.role, "admin")
+      )
+    )
+    .limit(1);
+
+  if (!admin) {
+    throw new Error(`No admin found for workspace ${workspaceId}`);
+  }
+
   // Create the channel
   const [conv] = await db
     .insert(conversations)
     .values({
       workspaceId,
-      userId: "system", // system-owned channel
-      title: channelName,
+      userId: admin.userId,
+      title: `#${channelName}`,
       channelName,
       channelType: "channel",
     })
