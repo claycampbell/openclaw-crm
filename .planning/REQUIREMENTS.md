@@ -174,6 +174,9 @@ Deferred to future release. Tracked but not in current roadmap.
 | TELE-04 | Phase 2 | Pending |
 | TELE-05 | Phase 2 | Pending |
 | TELE-06 | Phase 2 | Pending |
+| TMLN-01 | Phase 2 | Pending |
+| TMLN-02 | Phase 2 | Pending |
+| TMLN-03 | Phase 2 | Pending |
 | AGEN-01 | Phase 3 | Pending |
 | AGEN-02 | Phase 3 | Pending |
 | AGEN-03 | Phase 3 | Pending |
@@ -191,9 +194,6 @@ Deferred to future release. Tracked but not in current roadmap.
 | LEAD-02 | Phase 3 | Pending |
 | LEAD-03 | Phase 3 | Pending |
 | LEAD-04 | Phase 3 | Pending |
-| TMLN-01 | Phase 3 | Pending |
-| TMLN-02 | Phase 3 | Pending |
-| TMLN-03 | Phase 3 | Pending |
 | DASH-01 | Phase 4 | Pending |
 | DASH-02 | Phase 4 | Pending |
 | DASH-03 | Phase 4 | Pending |
@@ -213,10 +213,10 @@ Deferred to future release. Tracked but not in current roadmap.
 | INTL-04 | Phase 5 | Pending |
 
 **Coverage:**
-- v1 requirements: 60 total
-- Mapped to phases: 60
+- v1 requirements: 65 total
+- Mapped to phases: 65
 - Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-03-10*
-*Last updated: 2026-03-10 after initial definition*
+*Last updated: 2026-03-10 after roadmap creation — TMLN moved to Phase 2 (with integrations), coverage count corrected to 65*
