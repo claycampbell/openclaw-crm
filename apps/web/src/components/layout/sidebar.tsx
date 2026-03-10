@@ -11,6 +11,7 @@ import {
   CheckSquare,
   StickyNote,
   Bell,
+  Inbox,
   Users,
   Building2,
   Handshake,
@@ -22,10 +23,11 @@ import {
   Check,
   Sun,
   Moon,
-  Inbox,
+  BarChart2,
+  TrendingUp,
+  UserCheck,
   Swords,
   Mail,
-  BarChart2,
   ClipboardCheck,
   FileText,
   PartyPopper,
@@ -41,12 +43,12 @@ import { useTheme } from "next-themes";
 
 const mainNav = [
   { href: "/home", label: "Home", icon: Home },
-  { href: "/inbox", label: "Inbox", icon: Inbox },
-  { href: "/dashboard", label: "Dashboard", icon: BarChart2 },
   { href: "/chat", label: "Chat", icon: MessageSquare },
+  { href: "/inbox", label: "Inbox", icon: Inbox },
   { href: "/tasks", label: "Tasks", icon: CheckSquare },
   { href: "/notes", label: "Notes", icon: StickyNote },
   { href: "/notifications", label: "Notifications", icon: Bell },
+  { href: "/dashboard", label: "Dashboard", icon: BarChart2 },
   { href: "/sequences", label: "Sequences", icon: Mail },
   { href: "/battlecards", label: "Battlecards", icon: Swords },
   { href: "/approvals", label: "Approvals", icon: ClipboardCheck },
@@ -58,6 +60,12 @@ const objectNav = [
   { href: "/objects/people", label: "People", icon: Users },
   { href: "/objects/companies", label: "Companies", icon: Building2 },
   { href: "/objects/deals", label: "Deals", icon: Handshake },
+];
+
+const analyticsNav = [
+  { href: "/analytics/win-loss", label: "Win/Loss", icon: BarChart2 },
+  { href: "/analytics/rep-coaching", label: "Rep Coaching", icon: UserCheck },
+  { href: "/analytics/forecast", label: "Forecast", icon: TrendingUp },
 ];
 
 const bottomNav = [
@@ -86,9 +94,18 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [activeWorkspace, setActiveWorkspace] = useState<Workspace | null>(null);
   const [expanded, setExpanded] = useState(false);
+  const [inboxCount, setInboxCount] = useState(0);
   const { theme, setTheme } = useTheme();
 
   useEffect(() => {
+    // Load pending draft count for inbox badge
+    fetch("/api/v1/assets?status=draft")
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data.data)) setInboxCount(data.data.length);
+      })
+      .catch(() => {});
+
     fetch("/api/v1/lists")
       .then((res) => res.json())
       .then((data) => {
@@ -205,12 +222,25 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             active={pathname === item.href}
             expanded={expanded}
             onClick={onNavigate}
+            badge={item.href === "/inbox" && inboxCount > 0 ? inboxCount : undefined}
           />
         ))}
 
         <div className="my-3 mx-2 h-px bg-sidebar-border" />
 
         {objectNav.map((item) => (
+          <NavItem
+            key={item.href}
+            {...item}
+            active={pathname.startsWith(item.href)}
+            expanded={expanded}
+            onClick={onNavigate}
+          />
+        ))}
+
+        <div className="my-3 mx-2 h-px bg-sidebar-border" />
+
+        {analyticsNav.map((item) => (
           <NavItem
             key={item.href}
             {...item}
@@ -303,6 +333,7 @@ function NavItem({
   active,
   expanded,
   onClick,
+  badge,
 }: {
   href: string;
   label: string;
@@ -310,6 +341,7 @@ function NavItem({
   active: boolean;
   expanded: boolean;
   onClick?: () => void;
+  badge?: number;
 }) {
   return (
     <Link
@@ -324,8 +356,24 @@ function NavItem({
           : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
       )}
     >
-      <Icon className="h-4 w-4 shrink-0" />
-      {expanded && label}
+      <div className="relative shrink-0">
+        <Icon className="h-4 w-4" />
+        {badge !== undefined && !expanded && (
+          <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
+            {badge > 9 ? "9+" : badge}
+          </span>
+        )}
+      </div>
+      {expanded && (
+        <>
+          <span className="flex-1">{label}</span>
+          {badge !== undefined && badge > 0 && (
+            <span className="ml-auto rounded-full bg-primary/20 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+              {badge}
+            </span>
+          )}
+        </>
+      )}
     </Link>
   );
 }
