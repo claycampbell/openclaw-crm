@@ -32,9 +32,15 @@ export async function getAuthContext(req: NextRequest): Promise<AuthContext | nu
   }
 
   // 2. Fall back to cookie-based auth
-  const session = await auth.api.getSession({
-    headers: req.headers,
-  });
+  let session: Awaited<ReturnType<typeof auth.api.getSession>> | null = null;
+  try {
+    session = await auth.api.getSession({
+      headers: req.headers,
+    });
+  } catch (err) {
+    console.error("[getAuthContext] auth.api.getSession threw:", err);
+    return null;
+  }
 
   if (!session?.user?.id) {
     return null;
