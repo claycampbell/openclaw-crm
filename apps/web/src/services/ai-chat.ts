@@ -12,6 +12,21 @@ import { listRecords, getRecord, createRecord, updateRecord, deleteRecord } from
 import { listTasks, createTask } from "./tasks";
 import { getNotesForRecord, createNote } from "./notes";
 import { listLists, listListEntries } from "./lists";
+// Phase 1-5 service imports
+import {
+  listSequences,
+  getSequence,
+  createSequence,
+  addStep,
+  enrollContact,
+  stopEnrollment,
+} from "./sequences";
+import { listAssets } from "./documents/asset-registry";
+import { listDrafts, approveDraft, rejectDraft, type AssetStatus } from "./generated-assets";
+import { getRepDashboard } from "./dashboard";
+import { getActivityTimeline } from "./activity-timeline";
+import { listContracts, generateContract } from "./contracts";
+import { detectCompetitors } from "./competitor-detector";
 
 // ─── Types ───────────────────────────────────────────────────────────
 
@@ -95,7 +110,7 @@ export async function buildSystemPrompt(workspaceId: string): Promise<string> {
     })
   );
 
-  return `You are an AI assistant for Aria. You help users manage their CRM data — searching records, creating and updating contacts, companies, deals, tasks, and notes.
+  return `You are Aria, the AI assistant for OpenClaw CRM. You help users manage their entire sales pipeline — from prospecting to close. You can search records, manage contacts/companies/deals, create tasks and notes, run email sequences, review AI-generated assets, check competitive intelligence, view dashboards, and manage contracts.
 
 Available object types and their attributes:
 ${objectDetails.join("\n")}
@@ -110,8 +125,33 @@ Guidelines:
 - For status attributes (like deal stage), use the exact status title values listed above.
 - When creating tasks, always provide a clear content description.
 - When creating notes, you need a recordId — search for the record first if needed.
+
+Sequences (outbound email automation):
+- Use list_sequences to show all sequences with stats.
+- Use create_sequence to set up a new outbound sequence, then add_sequence_step for each email step.
+- Use enroll_in_sequence to add a contact to a sequence. Search for the contact first if needed.
+- Step templates support {{contactName}} and {{companyName}} placeholders.
+
+Competitive Intelligence:
+- Use list_battlecards to show all battlecards with competitor strengths, weaknesses, and objection handling.
+- Use detect_competitors to scan text (emails, notes) for competitor mentions.
+
+AI-Generated Assets:
+- Use list_generated_assets to see draft proposals, briefs, battlecards, and follow-ups pending review.
+- Use approve_asset or reject_asset to process drafts. Always explain the asset content before asking for approval.
+
+Dashboard & Analytics:
+- Use get_dashboard for a quick overview of pipeline value, win rate, active deals, tasks, and meetings.
+- Use get_activity_timeline to see the full history of a record (emails, calls, notes, stage changes).
+
+Contracts:
+- Use list_contracts to see contracts for a deal.
+- Use generate_contract to create a contract from a template.
+
+General:
 - Be concise and helpful. Confirm actions before executing writes.
-- If a tool call fails, explain the error to the user and suggest alternatives.`;
+- If a tool call fails, explain the error to the user and suggest alternatives.
+- Proactively suggest relevant actions (e.g., if a deal is won, suggest generating a contract).`;
 }
 
 // ─── Tool Definitions ────────────────────────────────────────────────
@@ -311,6 +351,218 @@ export const toolDefinitions = [
       },
     },
   },
+
+  // ─── Sequences Tools ────────────────────────────────────────────────
+  {
+    type: "function" as const,
+    function: {
+      name: "list_sequences",
+      description: "List all email sequences in the workspace with step counts, enrollment counts, and reply rates.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "get_sequence",
+      description: "Get full details of a sequence including all steps and enrollments.",
+      parameters: {
+        type: "object",
+        properties: {
+          sequence_id: { type: "string", description: "Sequence UUID" },
+        },
+        required: ["sequence_id"],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "create_sequence",
+      description: "Create a new email sequence for outbound outreach.",
+      parameters: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "Sequence name" },
+          description: { type: "string", description: "Sequence description" },
+        },
+        required: ["name"],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "add_sequence_step",
+      description: "Add an email step to a sequence. Each step has a subject, body template, and delay.",
+      parameters: {
+        type: "object",
+        properties: {
+          sequence_id: { type: "string", description: "Sequence UUID" },
+          step_number: { type: "number", description: "Step number (1-based)" },
+          delay_days: { type: "number", description: "Days to wait before sending (0 = immediately)" },
+          subject: { type: "string", description: "Email subject line (can include {{contactName}}, {{companyName}} placeholders)" },
+          body: { type: "string", description: "Email body template (can include {{contactName}}, {{companyName}} placeholders)" },
+        },
+        required: ["sequence_id", "subject", "body"],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "enroll_in_sequence",
+      description: "Enroll a contact record into a sequence to start receiving automated emails.",
+      parameters: {
+        type: "object",
+        properties: {
+          sequence_id: { type: "string", description: "Sequence UUID" },
+          contact_record_id: { type: "string", description: "Contact record UUID to enroll" },
+        },
+        required: ["sequence_id", "contact_record_id"],
+      },
+    },
+  },
+
+  // ─── Battlecards / Competitive Intelligence Tools ───────────────────
+  {
+    type: "function" as const,
+    function: {
+      name: "list_battlecards",
+      description: "List all competitive battlecards. Battlecards contain competitor strengths, weaknesses, our advantages, and objection handling.",
+      parameters: {
+        type: "object",
+        properties: {
+          status: { type: "string", description: "Filter by status: 'approved' or 'draft' (default: shows both)" },
+        },
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "detect_competitors",
+      description: "Detect competitor mentions in text. Returns list of competitor names found.",
+      parameters: {
+        type: "object",
+        properties: {
+          text: { type: "string", description: "Text to scan for competitor mentions" },
+        },
+        required: ["text"],
+      },
+    },
+  },
+
+  // ─── Generated Assets / AI Drafts Tools ─────────────────────────────
+  {
+    type: "function" as const,
+    function: {
+      name: "list_generated_assets",
+      description: "List AI-generated assets (proposals, briefs, battlecards, follow-ups, etc.). Defaults to drafts pending review.",
+      parameters: {
+        type: "object",
+        properties: {
+          status: { type: "string", description: "Filter: 'draft', 'approved', 'rejected', 'sent' (default: 'draft')" },
+          asset_type: {
+            type: "string",
+            description: "Filter by type: 'proposal', 'opportunity_brief', 'meeting_prep', 'followup', 'battlecard', 'sequence_step', 'handoff_brief', 'contract', 'sow'",
+          },
+          record_id: { type: "string", description: "Filter by linked record/deal UUID" },
+        },
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "approve_asset",
+      description: "Approve an AI-generated draft asset, moving it from draft to approved.",
+      parameters: {
+        type: "object",
+        properties: {
+          asset_id: { type: "string", description: "Asset UUID to approve" },
+        },
+        required: ["asset_id"],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "reject_asset",
+      description: "Reject an AI-generated draft asset with an optional note.",
+      parameters: {
+        type: "object",
+        properties: {
+          asset_id: { type: "string", description: "Asset UUID to reject" },
+          rejection_note: { type: "string", description: "Reason for rejection" },
+        },
+        required: ["asset_id"],
+      },
+    },
+  },
+
+  // ─── Dashboard / Analytics Tools ────────────────────────────────────
+  {
+    type: "function" as const,
+    function: {
+      name: "get_dashboard",
+      description: "Get the user's sales dashboard with pipeline value, win rate, active deals, overdue tasks, upcoming meetings, and recent activity.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "get_activity_timeline",
+      description: "Get the activity timeline for a record (notes, emails, calls, tasks, stage changes).",
+      parameters: {
+        type: "object",
+        properties: {
+          record_id: { type: "string", description: "Record UUID" },
+          limit: { type: "number", description: "Max events to return (default 20)" },
+        },
+        required: ["record_id"],
+      },
+    },
+  },
+
+  // ─── Contracts Tools ────────────────────────────────────────────────
+  {
+    type: "function" as const,
+    function: {
+      name: "list_contracts",
+      description: "List contracts, optionally filtered by deal/record or status.",
+      parameters: {
+        type: "object",
+        properties: {
+          record_id: { type: "string", description: "Filter by deal/record UUID" },
+          status: { type: "string", description: "Filter: 'draft', 'pending_signature', 'signed', 'expired', 'voided'" },
+        },
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "generate_contract",
+      description: "Generate a contract from a template for a deal. Auto-populates merge fields from the deal record.",
+      parameters: {
+        type: "object",
+        properties: {
+          title: { type: "string", description: "Contract title" },
+          template_id: { type: "string", description: "Contract template UUID (optional — uses default if omitted)" },
+          record_id: { type: "string", description: "Deal/record UUID to pull merge fields from" },
+          contract_type: { type: "string", description: "Type: 'nda', 'msa', 'sow', 'proposal', 'order_form', 'custom' (default: 'sow')" },
+          merge_fields: {
+            type: "object",
+            description: "Override merge fields (e.g., { company_name, vendor_name, effective_date })",
+          },
+        },
+        required: ["title"],
+      },
+    },
+  },
 ];
 
 // ─── Tool Handlers ───────────────────────────────────────────────────
@@ -464,6 +716,191 @@ export const toolHandlers: Record<string, ToolHandler> = {
         : undefined;
       const note = await createNote(args.record_id as string, args.title as string, content, ctx.userId);
       return note;
+    },
+  },
+
+  // ─── Sequences ────────────────────────────────────────────────────
+  list_sequences: {
+    requiresConfirmation: false,
+    async execute(_args, ctx) {
+      const seqs = await listSequences(ctx.workspaceId);
+      return { sequences: seqs, count: seqs.length };
+    },
+  },
+
+  get_sequence: {
+    requiresConfirmation: false,
+    async execute(args, ctx) {
+      const seq = await getSequence(args.sequence_id as string, ctx.workspaceId);
+      if (!seq) return { error: "Sequence not found" };
+      return seq;
+    },
+  },
+
+  create_sequence: {
+    requiresConfirmation: true,
+    async execute(args, ctx) {
+      const seq = await createSequence(ctx.workspaceId, ctx.userId, {
+        name: args.name as string,
+        description: args.description as string | undefined,
+      });
+      return seq;
+    },
+  },
+
+  add_sequence_step: {
+    requiresConfirmation: true,
+    async execute(args, ctx) {
+      const seq = await getSequence(args.sequence_id as string, ctx.workspaceId);
+      if (!seq) return { error: "Sequence not found" };
+
+      const step = await addStep(args.sequence_id as string, ctx.workspaceId, {
+        stepNumber: (args.step_number as number) ?? (seq.steps.length + 1),
+        delayDays: (args.delay_days as number) ?? 0,
+        subject: args.subject as string,
+        body: args.body as string,
+      });
+      return step;
+    },
+  },
+
+  enroll_in_sequence: {
+    requiresConfirmation: true,
+    async execute(args, ctx) {
+      const enrollment = await enrollContact(
+        args.sequence_id as string,
+        ctx.workspaceId,
+        args.contact_record_id as string
+      );
+      return enrollment;
+    },
+  },
+
+  // ─── Battlecards / Competitive Intelligence ───────────────────────
+  list_battlecards: {
+    requiresConfirmation: false,
+    async execute(args, ctx) {
+      const approved = await listAssets(ctx.workspaceId, {
+        assetType: "battlecard",
+        status: (args.status as string) ?? "approved",
+        limit: 100,
+      });
+      const drafts = !args.status
+        ? await listAssets(ctx.workspaceId, { assetType: "battlecard", status: "draft", limit: 100 })
+        : [];
+
+      const all = [...approved, ...drafts].map((a) => {
+        const content = (a.structuredContent ?? {}) as Record<string, unknown>;
+        const meta = (a.metadata ?? {}) as Record<string, unknown>;
+        return {
+          id: a.id,
+          competitorName: (meta.competitorName as string) ?? (content.competitor_name as string) ?? "Unknown",
+          status: a.status,
+          strengths: content.their_strengths ?? [],
+          weaknesses: content.their_weaknesses ?? [],
+          ourAdvantages: content.our_advantages ?? [],
+          overview: content.competitor_overview ?? "",
+          objectionHandling: content.objection_handling ?? [],
+          discoveryQuestions: content.discovery_questions ?? [],
+        };
+      });
+      return { battlecards: all, count: all.length };
+    },
+  },
+
+  detect_competitors: {
+    requiresConfirmation: false,
+    async execute(args, ctx) {
+      const competitors = await detectCompetitors(args.text as string, ctx.workspaceId);
+      return { competitors, count: competitors.length };
+    },
+  },
+
+  // ─── Generated Assets ─────────────────────────────────────────────
+  list_generated_assets: {
+    requiresConfirmation: false,
+    async execute(args, ctx) {
+      const assets = await listDrafts(ctx.workspaceId, {
+        status: (args.status as AssetStatus) ?? ("draft" as AssetStatus),
+        recordId: args.record_id as string | undefined,
+      });
+      // Filter by asset_type client-side if provided
+      const filtered = args.asset_type
+        ? assets.filter((a) => a.assetType === args.asset_type)
+        : assets;
+      return { assets: filtered, count: filtered.length };
+    },
+  },
+
+  approve_asset: {
+    requiresConfirmation: true,
+    async execute(args, ctx) {
+      const result = await approveDraft(args.asset_id as string, ctx.userId, ctx.workspaceId);
+      if (!result) return { error: "Asset not found or already processed" };
+      return { approved: true, id: result.id, status: result.status };
+    },
+  },
+
+  reject_asset: {
+    requiresConfirmation: true,
+    async execute(args, ctx) {
+      const result = await rejectDraft(
+        args.asset_id as string,
+        ctx.userId,
+        ctx.workspaceId,
+        args.rejection_note as string | undefined
+      );
+      if (!result) return { error: "Asset not found or already processed" };
+      return { rejected: true, id: result.id, status: result.status };
+    },
+  },
+
+  // ─── Dashboard / Analytics ────────────────────────────────────────
+  get_dashboard: {
+    requiresConfirmation: false,
+    async execute(_args, ctx) {
+      const dashboard = await getRepDashboard(ctx.workspaceId, ctx.userId);
+      return dashboard;
+    },
+  },
+
+  get_activity_timeline: {
+    requiresConfirmation: false,
+    async execute(args, ctx) {
+      const timeline = await getActivityTimeline(
+        ctx.workspaceId,
+        args.record_id as string,
+        null,
+        (args.limit as number) ?? 20
+      );
+      return timeline;
+    },
+  },
+
+  // ─── Contracts ────────────────────────────────────────────────────
+  list_contracts: {
+    requiresConfirmation: false,
+    async execute(args, ctx) {
+      const contracts = await listContracts(ctx.workspaceId, {
+        recordId: args.record_id as string | undefined,
+        status: args.status as string | undefined,
+      });
+      return { contracts, count: contracts.length };
+    },
+  },
+
+  generate_contract: {
+    requiresConfirmation: true,
+    async execute(args, ctx) {
+      const contract = await generateContract(ctx.workspaceId, {
+        title: args.title as string,
+        templateId: args.template_id as string | undefined,
+        recordId: args.record_id as string | undefined,
+        contractType: args.contract_type as "nda" | "msa" | "sow" | "proposal" | "order_form" | "custom" | undefined,
+        mergeFields: args.merge_fields as Record<string, string> | undefined,
+        generatedBy: ctx.userId,
+      });
+      return contract;
     },
   },
 };
