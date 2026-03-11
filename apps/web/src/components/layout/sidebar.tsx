@@ -40,6 +40,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useTheme } from "next-themes";
+import { LogoMark } from "@/components/brand/logo";
 
 const mainNav = [
   { href: "/home", label: "Home", icon: Home },
@@ -169,9 +170,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button className="flex w-full items-center gap-2.5 rounded-lg px-1.5 py-1.5 text-left hover:bg-sidebar-accent transition-colors">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-foreground/10 text-xs font-semibold text-foreground shrink-0">
-                {activeWorkspace?.name?.charAt(0)?.toUpperCase() || "O"}
-              </div>
+              <LogoMark size={28} className="shrink-0" />
               {expanded && (
                 <>
                   <span className="text-sm font-medium text-foreground truncate flex-1">

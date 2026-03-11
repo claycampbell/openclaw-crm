@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "@/lib/auth-client";
 import { trackEvent } from "@/lib/analytics";
+import { Logo } from "@/components/brand/logo";
 
 function LoginForm() {
   const router = useRouter();
@@ -77,6 +78,9 @@ function LoginForm() {
   return (
     <div className="rounded-2xl border border-foreground/[0.06] dark:border-white/[0.06] bg-foreground/[0.015] dark:bg-white/[0.02] px-8 py-8">
       <div className="text-center mb-6">
+        <div className="flex justify-center mb-4">
+          <Logo size="lg" />
+        </div>
         <h1 className="text-title-4">Welcome back</h1>
         <p className="text-body-sm text-muted-foreground/70 mt-1.5">
           Sign in to your account

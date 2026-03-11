@@ -27,22 +27,38 @@ export default function OGImage() {
             width: 500,
             height: 500,
             borderRadius: "50%",
-            background: "radial-gradient(circle, rgba(99, 102, 241, 0.25) 0%, transparent 70%)",
-            top: "10%",
+            background: "radial-gradient(circle, rgba(99, 102, 241, 0.3) 0%, transparent 70%)",
+            top: "5%",
             left: "35%",
           }}
         />
 
-        {/* Logo */}
+        {/* Logo mark + text */}
         <div
           style={{
             display: "flex",
-            alignItems: "baseline",
-            gap: 8,
+            alignItems: "center",
+            gap: 16,
             marginBottom: 24,
           }}
         >
-          <span style={{ fontSize: 72, fontWeight: 700, color: "#f0f0f5" }}>
+          <div
+            style={{
+              width: 64,
+              height: 64,
+              borderRadius: 16,
+              background: "linear-gradient(145deg, #6366f1, #4f46e5)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 32,
+              fontWeight: 800,
+              color: "#fff",
+            }}
+          >
+            A
+          </div>
+          <span style={{ fontSize: 72, fontWeight: 700, color: "#f0f0f5", letterSpacing: -2 }}>
             Aria
           </span>
         </div>
