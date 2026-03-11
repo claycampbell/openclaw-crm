@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { GeistSans } from "geist/font/sans";
 import { ThemeProvider } from "@/components/theme-provider";
 import { PlausibleScript } from "@/components/analytics/plausible-script";
 import { GA4Script } from "@/components/analytics/ga4-script";
@@ -10,7 +11,7 @@ import "./globals.css";
 
 const inter = Inter({
   subsets: ["latin"],
-  axes: ["opsz"],
+  variable: "--font-inter",
 });
 
 export const metadata: Metadata = {
@@ -51,7 +52,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
+      <body className={`${inter.variable} ${GeistSans.variable} font-sans`}>
         <PlausibleScript />
         <GA4Script />
         <AmplitudeScript />

@@ -36,6 +36,14 @@ async function seed() {
 
   console.log(`Created workspace: ${workspace.name}`);
 
+  // Create system user
+  await db.insert(schema.users).values({
+    id: "system",
+    name: "System",
+    email: "system@openclaw.com",
+  });
+  console.log("Created system user");
+
   // Seed standard objects (same logic as seedWorkspaceObjects in services/workspace.ts)
   for (const stdObj of STANDARD_OBJECTS) {
     const [object] = await db

@@ -3,6 +3,7 @@
 import { useRef, useEffect, KeyboardEvent } from "react";
 import { Send, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 interface ChatInputProps {
   value: string;
@@ -42,7 +43,10 @@ export function ChatInput({ value, onChange, onSend, disabled, streaming }: Chat
           placeholder="Ask about your CRM data..."
           disabled={disabled}
           rows={1}
-          className="flex-1 resize-none rounded-lg border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+          className={cn(
+            "flex-1 resize-none rounded-lg border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+            !disabled && "ai-breathing"
+          )}
         />
         <Button
           onClick={onSend}

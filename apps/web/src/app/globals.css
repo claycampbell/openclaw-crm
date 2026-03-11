@@ -36,60 +36,67 @@
 :root {
   --radius: 0.75rem;
 
+  --blur-sm: 4px;
+  --blur-md: 8px;
+  --blur-lg: 16px;
+  --blur-xl: 24px;
+
   /* Light theme (default) */
-  --background: #ffffff;
-  --foreground: #1d1d1f;
-  --card: #fafafa;
-  --card-foreground: #1d1d1f;
+  --background: #f9f9f9;
+  --foreground: #1a1a1a;
+  --card: #ffffff;
+  --card-foreground: #1a1a1a;
   --popover: #ffffff;
-  --popover-foreground: #1d1d1f;
-  --primary: oklch(0.55 0.15 250);
+  --popover-foreground: #1a1a1a;
+  --primary: oklch(0.6 0.2 250);
+  --primary-rgb: 68, 111, 255;
   --primary-foreground: #ffffff;
-  --secondary: #f5f5f7;
-  --secondary-foreground: #1d1d1f;
-  --muted: #f5f5f7;
-  --muted-foreground: #86868b;
-  --accent: #f5f5f7;
-  --accent-foreground: #1d1d1f;
-  --destructive: oklch(0.55 0.22 25);
+  --secondary: #f2f2f2;
+  --secondary-foreground: #1a1a1a;
+  --muted: #f2f2f2;
+  --muted-foreground: #808080;
+  --accent: #f2f2f2;
+  --accent-foreground: #1a1a1a;
+  --destructive: oklch(0.6 0.25 25);
   --destructive-foreground: #ffffff;
-  --border: rgba(0, 0, 0, 0.05);
-  --input: rgba(0, 0, 0, 0.05);
-  --ring: oklch(0.55 0.15 250);
-  --sidebar: #f5f5f7;
-  --sidebar-foreground: #86868b;
-  --sidebar-accent: rgba(0, 0, 0, 0.03);
-  --sidebar-accent-foreground: #1d1d1f;
-  --sidebar-border: rgba(0, 0, 0, 0.04);
-  --landing-tint: rgba(230, 235, 245, 0.5);
+  --border: rgba(0, 0, 0, 0.07);
+  --input: rgba(0, 0, 0, 0.07);
+  --ring: oklch(0.6 0.2 250);
+  --sidebar: #f2f2f2;
+  --sidebar-foreground: #808080;
+  --sidebar-accent: rgba(0, 0, 0, 0.04);
+  --sidebar-accent-foreground: #1a1a1a;
+  --sidebar-border: rgba(0, 0, 0, 0.05);
+  --landing-tint: rgba(230, 235, 245, 0.6);
 }
 
 .dark {
-  --background: #000000;
-  --foreground: #f5f5f7;
-  --card: #1c1c1e;
-  --card-foreground: #f5f5f7;
-  --popover: #1c1c1e;
-  --popover-foreground: #f5f5f7;
-  --primary: oklch(0.65 0.15 250);
+  --background: #0d0d0d;
+  --foreground: #f2f2f2;
+  --card: #1a1a1a;
+  --card-foreground: #f2f2f2;
+  --popover: #1a1a1a;
+  --popover-foreground: #f2f2f2;
+  --primary: oklch(0.7 0.2 250);
+  --primary-rgb: 125, 158, 255;
   --primary-foreground: #ffffff;
-  --secondary: #2c2c2e;
-  --secondary-foreground: #f5f5f7;
-  --muted: #2c2c2e;
-  --muted-foreground: #86868b;
-  --accent: #2c2c2e;
-  --accent-foreground: #f5f5f7;
-  --destructive: oklch(0.55 0.22 25);
-  --destructive-foreground: #f5f5f7;
-  --border: rgba(255, 255, 255, 0.06);
-  --input: rgba(255, 255, 255, 0.06);
-  --ring: oklch(0.65 0.15 250);
-  --sidebar: #0a0a0a;
-  --sidebar-foreground: #86868b;
-  --sidebar-accent: rgba(255, 255, 255, 0.05);
-  --sidebar-accent-foreground: #f5f5f7;
-  --sidebar-border: rgba(255, 255, 255, 0.05);
-  --landing-tint: rgba(15, 20, 40, 0.6);
+  --secondary: #262626;
+  --secondary-foreground: #f2f2f2;
+  --muted: #262626;
+  --muted-foreground: #808080;
+  --accent: #262626;
+  --accent-foreground: #f2f2f2;
+  --destructive: oklch(0.6 0.25 25);
+  --destructive-foreground: #f2f2f2;
+  --border: rgba(255, 255, 255, 0.08);
+  --input: rgba(255, 255, 255, 0.08);
+  --ring: oklch(0.7 0.2 250);
+  --sidebar: #0f0f0f;
+  --sidebar-foreground: #808080;
+  --sidebar-accent: rgba(255, 255, 255, 0.06);
+  --sidebar-accent-foreground: #f2f2f2;
+  --sidebar-border: rgba(255, 255, 255, 0.06);
+  --landing-tint: rgba(15, 20, 40, 0.7);
 }
 
 @layer base {
@@ -164,13 +171,13 @@
 /* ── Glass effects ────────────────────────────────────── */
 
 .sidebar-glass {
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(var(--blur-md)) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--blur-md)) saturate(180%);
 }
 
 .nav-glass {
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(var(--blur-md)) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--blur-md)) saturate(180%);
   background: rgba(255, 255, 255, 0.88);
 }
 
@@ -186,8 +193,8 @@
 }
 
 .landing-nav-scrolled {
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(var(--blur-md)) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--blur-md)) saturate(180%);
   background: rgba(255, 255, 255, 0.72);
   box-shadow: 0 1px 8px rgba(0, 0, 0, 0.04);
 }
@@ -197,10 +204,26 @@
   box-shadow: 0 1px 8px rgba(0, 0, 0, 0.2);
 }
 
+/* ── AI "breathing" effect ───────────────────────────── */
+
+@keyframes ai-breathing {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(var(--primary-rgb), 0.2);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(var(--primary-rgb), 0);
+  }
+}
+
+.ai-breathing {
+  animation: ai-breathing 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
 /* Smooth scrolling */
 html {
   scroll-behavior: smooth;
 }
+
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
