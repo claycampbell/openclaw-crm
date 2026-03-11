@@ -77,7 +77,14 @@ Decimal phases appear between their surrounding integers in numeric order.
 5. When a Zoom call recording is available, the system fetches the recording, transcribes it with speaker diarization, applies PII redaction, and logs the call to the deal timeline
 6. Rep can view a unified chronological timeline on any record showing all touchpoints â€” emails, calls, meetings, notes, tasks, and stage changes â€” in one place
 
-**Plans**: TBD
+**Plans**: 5 plans
+
+Plans:
+- [ ] 07-01-PLAN.md — Harden Gmail/Outlook delta sync with error recovery (historyId recovery, delta token refresh, subscription lifecycle)
+- [ ] 07-02-PLAN.md — Calendar sync hardening and shared email-to-record matching utility
+- [ ] 07-03-PLAN.md — Email threads API: thread-grouped listing and lazy body fetching endpoints
+- [ ] 07-04-PLAN.md — Unified send-email endpoint with CC/BCC and provider auto-detection
+- [ ] 07-05-PLAN.md — Email tab UI: thread list, thread view, compose form with TipTap editor
 
 - [ ] 02-01: integration_tokens table + OAuth token storage/refresh â€” encrypted storage, proactive refresh, invalid_grant detection
 - [ ] 02-02: Gmail integration â€” OAuth flow, push notifications, delta sync, email-to-record matching, email_messages table
@@ -105,7 +112,14 @@ Decimal phases appear between their surrounding integers in numeric order.
 4. Rep can create a multi-step email sequence, enroll contacts into it, and the sequence stops automatically when a recipient replies
 5. Each lead has a numeric score with a plain-language AI explanation (e.g., "Title matches ICP, 3 pricing page visits") and reps can capture inbound leads via embeddable web forms
 
-**Plans**: TBD
+**Plans**: 5 plans
+
+Plans:
+- [ ] 07-01-PLAN.md — Harden Gmail/Outlook delta sync with error recovery (historyId recovery, delta token refresh, subscription lifecycle)
+- [ ] 07-02-PLAN.md — Calendar sync hardening and shared email-to-record matching utility
+- [ ] 07-03-PLAN.md — Email threads API: thread-grouped listing and lazy body fetching endpoints
+- [ ] 07-04-PLAN.md — Unified send-email endpoint with CC/BCC and provider auto-detection
+- [ ] 07-05-PLAN.md — Email tab UI: thread list, thread view, compose form with TipTap editor
 
 - [ ] 03-01: Generated assets pipeline setup â€” Vercel AI SDK generateObject(), tiered context strategy (rule-based / light / full), asset type registry
 - [ ] 03-02: Opportunity brief + proposal + deck generators â€” context assemblers, LLM callers, draft-to-approval-inbox flow
@@ -129,7 +143,14 @@ Decimal phases appear between their surrounding integers in numeric order.
 3. A contract or SOW is generated from deal data as a PDF, routes through the approval workflow, and is only deliverable to the customer after explicit approver sign-off
 4. When a deal is marked closed-won, a customer handoff brief is generated automatically and can be exported or sent to an external CS tool via webhook
 
-**Plans**: TBD
+**Plans**: 5 plans
+
+Plans:
+- [ ] 07-01-PLAN.md — Harden Gmail/Outlook delta sync with error recovery (historyId recovery, delta token refresh, subscription lifecycle)
+- [ ] 07-02-PLAN.md — Calendar sync hardening and shared email-to-record matching utility
+- [ ] 07-03-PLAN.md — Email threads API: thread-grouped listing and lazy body fetching endpoints
+- [ ] 07-04-PLAN.md — Unified send-email endpoint with CC/BCC and provider auto-detection
+- [ ] 07-05-PLAN.md — Email tab UI: thread list, thread view, compose form with TipTap editor
 
 - [ ] 04-01: Role-based dashboards â€” rep pipeline view, manager team view, leadership forecast view, per-user view preferences
 - [ ] 04-02: Approval workflow engine â€” approval_requests table, configurable rules per workspace, escalation via pg-boss scheduled jobs, approver notifications
@@ -151,7 +172,14 @@ Decimal phases appear between their surrounding integers in numeric order.
 3. Leadership can view a pipeline forecast with AI confidence scores weighted by engagement signals and historical close rates
 4. Each active deal shows a "next best action" suggestion based on stage, recent activity, and win pattern data
 
-**Plans**: TBD
+**Plans**: 5 plans
+
+Plans:
+- [ ] 07-01-PLAN.md — Harden Gmail/Outlook delta sync with error recovery (historyId recovery, delta token refresh, subscription lifecycle)
+- [ ] 07-02-PLAN.md — Calendar sync hardening and shared email-to-record matching utility
+- [ ] 07-03-PLAN.md — Email threads API: thread-grouped listing and lazy body fetching endpoints
+- [ ] 07-04-PLAN.md — Unified send-email endpoint with CC/BCC and provider auto-detection
+- [ ] 07-05-PLAN.md — Email tab UI: thread list, thread view, compose form with TipTap editor
 
 - [ ] 05-01: Win/loss pattern analysis â€” read-only query layer over closed deals, AI narrative summary, minimum data volume gate
 - [ ] 05-02: Rep performance coaching â€” cohort analysis (same territory/product), named deviation detection, coaching recommendation cards
@@ -161,7 +189,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 ## v2.0 Complete & Polish (Phases 6-11)
 
-**Milestone Goal:** Wire up the stub infrastructure (job processor, AI generation, integration sync, analytics), polish the UX to production-grade quality (toasts, pagination, validation, dialogs), and add differentiation features (email compose, workflow automation, activity scoring, team collaboration, import/export, webhooks).
+**Milestone Goal:** Wire up the stub infrastructure (job processor, AI generation, integration sync, analytics), polish the UX to production-grade quality (toasts, pagination, validation, dialogs), and add differentiation features (email compose on records, workflow automation builder, activity scoring, team collaboration, import/export improvements, webhooks).
 
 ### Phase 6: Infrastructure + UX Polish
 
@@ -179,7 +207,14 @@ Decimal phases appear between their surrounding integers in numeric order.
 4. All create/edit forms show inline field-level validation errors before submission, and all destructive actions require confirmation via a styled dialog
 5. Record tables load the first page via cursor-based pagination and support scrolling through large datasets without DOM performance degradation via virtual scrolling
 
-**Plans**: TBD
+**Plans**: 5 plans
+
+Plans:
+- [ ] 07-01-PLAN.md — Harden Gmail/Outlook delta sync with error recovery (historyId recovery, delta token refresh, subscription lifecycle)
+- [ ] 07-02-PLAN.md — Calendar sync hardening and shared email-to-record matching utility
+- [ ] 07-03-PLAN.md — Email threads API: thread-grouped listing and lazy body fetching endpoints
+- [ ] 07-04-PLAN.md — Unified send-email endpoint with CC/BCC and provider auto-detection
+- [ ] 07-05-PLAN.md — Email tab UI: thread list, thread view, compose form with TipTap editor
 
 ### Phase 7: Integration Sync + Email Compose
 
@@ -197,7 +232,14 @@ Decimal phases appear between their surrounding integers in numeric order.
 4. User can compose and send an email from a record detail page using their connected Gmail/Outlook OAuth token (never SMTP relay), with TipTap editor, CC/BCC fields, and auto-populated To address from the record's email attribute
 5. User can view email thread history on a record detail page grouped by thread_id, with message bodies lazy-loaded from the provider API on expand
 
-**Plans**: TBD
+**Plans**: 5 plans
+
+Plans:
+- [ ] 07-01-PLAN.md — Harden Gmail/Outlook delta sync with error recovery (historyId recovery, delta token refresh, subscription lifecycle)
+- [ ] 07-02-PLAN.md — Calendar sync hardening and shared email-to-record matching utility
+- [ ] 07-03-PLAN.md — Email threads API: thread-grouped listing and lazy body fetching endpoints
+- [ ] 07-04-PLAN.md — Unified send-email endpoint with CC/BCC and provider auto-detection
+- [ ] 07-05-PLAN.md — Email tab UI: thread list, thread view, compose form with TipTap editor
 
 ### Phase 8: AI Asset Generation + Activity Scoring
 
@@ -215,7 +257,14 @@ Decimal phases appear between their surrounding integers in numeric order.
 4. Each contact and company has a composite activity score (fit 40% + engagement 40% + recency 20%) that recalculates via background job when relevant signals arrive, with 25% monthly decay
 5. A hot leads dashboard widget shows the top 20 records by score with 7-day trend indicators, and reps can sort/filter record tables by activity score
 
-**Plans**: TBD
+**Plans**: 5 plans
+
+Plans:
+- [ ] 07-01-PLAN.md — Harden Gmail/Outlook delta sync with error recovery (historyId recovery, delta token refresh, subscription lifecycle)
+- [ ] 07-02-PLAN.md — Calendar sync hardening and shared email-to-record matching utility
+- [ ] 07-03-PLAN.md — Email threads API: thread-grouped listing and lazy body fetching endpoints
+- [ ] 07-04-PLAN.md — Unified send-email endpoint with CC/BCC and provider auto-detection
+- [ ] 07-05-PLAN.md — Email tab UI: thread list, thread view, compose form with TipTap editor
 
 ### Phase 9: Workflow Automation + Team Collaboration
 
@@ -233,7 +282,14 @@ Decimal phases appear between their surrounding integers in numeric order.
 4. User can add threaded comments on records (distinct from rich-text notes), and comments support @mentions with the same notification behavior
 5. User can save the current filter/sort/column configuration as a named view (private by default, optionally shared), and apply saved views from a dropdown on record table pages
 
-**Plans**: TBD
+**Plans**: 5 plans
+
+Plans:
+- [ ] 07-01-PLAN.md — Harden Gmail/Outlook delta sync with error recovery (historyId recovery, delta token refresh, subscription lifecycle)
+- [ ] 07-02-PLAN.md — Calendar sync hardening and shared email-to-record matching utility
+- [ ] 07-03-PLAN.md — Email threads API: thread-grouped listing and lazy body fetching endpoints
+- [ ] 07-04-PLAN.md — Unified send-email endpoint with CC/BCC and provider auto-detection
+- [ ] 07-05-PLAN.md — Email tab UI: thread list, thread view, compose form with TipTap editor
 
 ### Phase 10: Import/Export + Outbound Webhooks
 
@@ -251,7 +307,14 @@ Decimal phases appear between their surrounding integers in numeric order.
 4. User can create webhook subscriptions with a target URL, selected event types (record.created, record.updated, deal.stage_changed, deal.closed, email.received), and optional HMAC secret -- with deliveries running async via job queue with 3x exponential backoff retry
 5. Each webhook delivery attempt is logged with HTTP status for debugging, and a circuit breaker disables the webhook after 5 consecutive failures with admin notification
 
-**Plans**: TBD
+**Plans**: 5 plans
+
+Plans:
+- [ ] 07-01-PLAN.md — Harden Gmail/Outlook delta sync with error recovery (historyId recovery, delta token refresh, subscription lifecycle)
+- [ ] 07-02-PLAN.md — Calendar sync hardening and shared email-to-record matching utility
+- [ ] 07-03-PLAN.md — Email threads API: thread-grouped listing and lazy body fetching endpoints
+- [ ] 07-04-PLAN.md — Unified send-email endpoint with CC/BCC and provider auto-detection
+- [ ] 07-05-PLAN.md — Email tab UI: thread list, thread view, compose form with TipTap editor
 
 ### Phase 11: Analytics
 
@@ -268,7 +331,12 @@ Decimal phases appear between their surrounding integers in numeric order.
 3. The pipeline forecast page shows weighted deal value by stage using historical close rates, with AI confidence scores reflecting engagement signal strength
 4. Each active deal shows a next-best-action suggestion based on its current stage, recent activity patterns, and historical win/loss data
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 11-01-PLAN.md â€” Analytics cache + win-loss signal patterns + rep coaching signal metrics + forecast engagement weighting
+- [ ] 11-02-PLAN.md â€” Next-best-action upgrade with signal data and win/loss pattern context
+- [ ] 11-03-PLAN.md â€” Frontend component updates: analytics layout, pattern icons, engagement columns, signal metrics display
 
 ## Progress
 
@@ -289,4 +357,4 @@ Note: Within v2.0, Phases 9 and 10 depend only on Phase 6 (not on 7 or 8) and ca
 | 8. AI Asset Generation + Activity Scoring | v2.0 | 0/TBD | Not started | - |
 | 9. Workflow Automation + Team Collaboration | v2.0 | 0/TBD | Not started | - |
 | 10. Import/Export + Outbound Webhooks | v2.0 | 0/TBD | Not started | - |
-| 11. Analytics | v2.0 | 0/TBD | Not started | - |
+| 11. Analytics | v2.0 | 0/3 | Planning complete | - |
