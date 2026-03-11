@@ -4,7 +4,7 @@
 import { db } from "@/db";
 import { generatedAssets } from "@/db/schema";
 import { eq, and, desc } from "drizzle-orm";
-import type { AssetType, AssetStatus, ContextTier, GeneratedAsset } from "@/db/schema/documents";
+import type { AssetType, AssetStatus, ContextTier, GeneratedAsset } from "@/db/schema/generated-assets";
 
 // ─── Asset Type Constants ─────────────────────────────────────────────────────
 

@@ -1,25 +1,44 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Swords, Plus, Search } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { Swords, Plus, ChevronDown, ChevronUp } from "lucide-react";
 
 interface Battlecard {
   id: string;
   competitorName: string;
   lastUpdated: string;
+  status: string;
   dealMentions: number;
   strengths: string[];
   weaknesses: string[];
+  ourAdvantages: string[];
+  competitorOverview: string;
+  objectionHandling: Array<{ their_claim: string; our_response: string }>;
+  discoveryQuestions: string[];
 }
 
 export default function BattlecardsPage() {
   const [battlecards, setBattlecards] = useState<Battlecard[]>([]);
   const [loading, setLoading] = useState(true);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const fetchBattlecards = useCallback(async () => {
+    try {
+      const res = await fetch("/api/v1/battlecards");
+      if (res.ok) {
+        const json = await res.json();
+        setBattlecards(json.data ?? []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch battlecards:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    // TODO: fetch from /api/v1/battlecards once backend is wired
-    setLoading(false);
-  }, []);
+    fetchBattlecards();
+  }, [fetchBattlecards]);
 
   return (
     <div className="p-6 max-w-5xl">
@@ -58,16 +77,35 @@ export default function BattlecardsPage() {
             <div
               key={card.id}
               className="rounded-lg border p-5 hover:bg-accent/50 transition-colors cursor-pointer"
+              onClick={() => setExpandedId(expandedId === card.id ? null : card.id)}
             >
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-2">
                   <Swords className="h-5 w-5 text-muted-foreground" />
                   <h3 className="font-medium">{card.competitorName}</h3>
+                  <span
+                    className={`text-xs rounded-full px-2 py-0.5 ${
+                      card.status === "approved"
+                        ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                        : "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
+                    }`}
+                  >
+                    {card.status}
+                  </span>
                 </div>
-                <span className="text-xs text-muted-foreground">
-                  {card.dealMentions} deal mentions
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">
+                    {card.dealMentions} deal mentions
+                  </span>
+                  {expandedId === card.id ? (
+                    <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </div>
               </div>
+
+              {/* Summary always visible */}
               <div className="mt-3 space-y-2">
                 {card.strengths.length > 0 && (
                   <div>
@@ -90,8 +128,93 @@ export default function BattlecardsPage() {
                   </div>
                 )}
               </div>
+
+              {/* Expanded detail */}
+              {expandedId === card.id && (
+                <div className="mt-4 space-y-3 border-t pt-4">
+                  {card.competitorOverview && (
+                    <div>
+                      <div className="text-xs font-medium text-muted-foreground mb-1">Overview</div>
+                      <p className="text-sm">{card.competitorOverview}</p>
+                    </div>
+                  )}
+
+                  {card.strengths.length > 0 && (
+                    <div>
+                      <div className="text-xs font-medium text-green-600 dark:text-green-400 mb-1">
+                        All Strengths
+                      </div>
+                      <ul className="text-sm text-muted-foreground space-y-1">
+                        {card.strengths.map((s, i) => (
+                          <li key={i}>- {s}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {card.weaknesses.length > 0 && (
+                    <div>
+                      <div className="text-xs font-medium text-red-600 dark:text-red-400 mb-1">
+                        All Weaknesses
+                      </div>
+                      <ul className="text-sm text-muted-foreground space-y-1">
+                        {card.weaknesses.map((w, i) => (
+                          <li key={i}>- {w}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {card.ourAdvantages.length > 0 && (
+                    <div>
+                      <div className="text-xs font-medium text-blue-600 dark:text-blue-400 mb-1">
+                        Our Advantages
+                      </div>
+                      <ul className="text-sm text-muted-foreground space-y-1">
+                        {card.ourAdvantages.map((a, i) => (
+                          <li key={i}>- {a}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {card.objectionHandling.length > 0 && (
+                    <div>
+                      <div className="text-xs font-medium text-muted-foreground mb-1">
+                        Objection Handling
+                      </div>
+                      <div className="space-y-2">
+                        {card.objectionHandling.map((obj, i) => (
+                          <div key={i} className="text-sm rounded bg-accent/50 p-2">
+                            <div className="font-medium text-red-600 dark:text-red-400">
+                              &quot;{obj.their_claim}&quot;
+                            </div>
+                            <div className="text-muted-foreground mt-1">
+                              {obj.our_response}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {card.discoveryQuestions.length > 0 && (
+                    <div>
+                      <div className="text-xs font-medium text-muted-foreground mb-1">
+                        Discovery Questions
+                      </div>
+                      <ul className="text-sm text-muted-foreground space-y-1">
+                        {card.discoveryQuestions.map((q, i) => (
+                          <li key={i}>{i + 1}. {q}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="mt-3 text-xs text-muted-foreground">
-                Updated {card.lastUpdated}
+                Updated {new Date(card.lastUpdated).toLocaleDateString()}
               </div>
             </div>
           ))}

@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { getAuthContext, unauthorized, success } from "@/lib/api-utils";
 import { listAssets } from "@/services/documents/asset-registry";
-import type { AssetType } from "@/db/schema/documents";
+import type { AssetType } from "@/db/schema/generated-assets";
 
 export async function GET(req: NextRequest) {
   const ctx = await getAuthContext(req);
