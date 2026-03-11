@@ -210,11 +210,11 @@ Plans:
 **Plans**: 5 plans
 
 Plans:
-- [ ] 07-01-PLAN.md — Harden Gmail/Outlook delta sync with error recovery (historyId recovery, delta token refresh, subscription lifecycle)
-- [ ] 07-02-PLAN.md — Calendar sync hardening and shared email-to-record matching utility
-- [ ] 07-03-PLAN.md — Email threads API: thread-grouped listing and lazy body fetching endpoints
-- [ ] 07-04-PLAN.md — Unified send-email endpoint with CC/BCC and provider auto-detection
-- [ ] 07-05-PLAN.md — Email tab UI: thread list, thread view, compose form with TipTap editor
+- [ ] 06-01-PLAN.md â€” Job execution fix: processJobs() calls executeJob() with FOR UPDATE SKIP LOCKED, exponential backoff retry, dead-letter state, signal auto-enqueue, enqueueJob signature unification
+- [ ] 06-02-PLAN.md â€” Toast + Error Boundaries: sonner Toaster global mount, toast on all mutations, react-error-boundary dashboard wrapper, shadcn AlertDialog, ConfirmDialog for destructive actions
+- [ ] 06-03-PLAN.md â€” Form Validation: react-hook-form + Zod, shadcn Form component, dynamic EAV-to-Zod schema builder, inline validation on create/edit record forms
+- [ ] 06-04-PLAN.md â€” Cursor Pagination + Virtual Scroll: cursor-pagination helper, API endpoint updates, infinite scroll in use-object-records hook, @tanstack/react-virtual in record-table
+- [ ] 06-05-PLAN.md â€” E2E Tests + Verification: Playwright tests for job pipeline and UX polish, human verification checkpoint
 
 ### Phase 7: Integration Sync + Email Compose
 
@@ -354,7 +354,7 @@ Note: Within v2.0, Phases 9 and 10 depend only on Phase 6 (not on 7 or 8) and ca
 | 5. Analytics + Intelligence | v1.0 | 0/3 | Not started | - |
 | 6. Infrastructure + UX Polish | v2.0 | 0/TBD | Not started | - |
 | 7. Integration Sync + Email Compose | v2.0 | 0/TBD | Not started | - |
-| 8. AI Asset Generation + Activity Scoring | v2.0 | 0/TBD | Not started | - |
+| 8. AI Asset Generation + Activity Scoring | v2.0 | 0/5 | Planning complete | - |
 | 9. Workflow Automation + Team Collaboration | v2.0 | 0/TBD | Not started | - |
-| 10. Import/Export + Outbound Webhooks | v2.0 | 0/TBD | Not started | - |
+| 10. Import/Export + Outbound Webhooks | v2.0 | 0/4 | Planning complete | - |
 | 11. Analytics | v2.0 | 0/3 | Planning complete | - |
