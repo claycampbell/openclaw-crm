@@ -121,68 +121,70 @@ Requirements for v2.0 milestone. Each maps to roadmap phases.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INFR-01 | TBD | Pending |
-| INFR-02 | TBD | Pending |
-| INFR-03 | TBD | Pending |
-| INFR-04 | TBD | Pending |
-| AIGN-01 | TBD | Pending |
-| AIGN-02 | TBD | Pending |
-| AIGN-03 | TBD | Pending |
-| AIGN-04 | TBD | Pending |
-| AIGN-05 | TBD | Pending |
-| AIGN-06 | TBD | Pending |
-| AIGN-07 | TBD | Pending |
-| SYNC-01 | TBD | Pending |
-| SYNC-02 | TBD | Pending |
-| SYNC-03 | TBD | Pending |
-| SYNC-04 | TBD | Pending |
-| SYNC-05 | TBD | Pending |
-| ANLT-01 | TBD | Pending |
-| ANLT-02 | TBD | Pending |
-| ANLT-03 | TBD | Pending |
-| ANLT-04 | TBD | Pending |
-| UXPL-01 | TBD | Pending |
-| UXPL-02 | TBD | Pending |
-| UXPL-03 | TBD | Pending |
-| UXPL-04 | TBD | Pending |
-| UXPL-05 | TBD | Pending |
-| UXPL-06 | TBD | Pending |
-| ECOM-01 | TBD | Pending |
-| ECOM-02 | TBD | Pending |
-| ECOM-03 | TBD | Pending |
-| ECOM-04 | TBD | Pending |
-| ECOM-05 | TBD | Pending |
-| SCOR-01 | TBD | Pending |
-| SCOR-02 | TBD | Pending |
-| SCOR-03 | TBD | Pending |
-| SCOR-04 | TBD | Pending |
-| WKFL-01 | TBD | Pending |
-| WKFL-02 | TBD | Pending |
-| WKFL-03 | TBD | Pending |
-| WKFL-04 | TBD | Pending |
-| WKFL-05 | TBD | Pending |
-| COLB-01 | TBD | Pending |
-| COLB-02 | TBD | Pending |
-| COLB-03 | TBD | Pending |
-| COLB-04 | TBD | Pending |
-| COLB-05 | TBD | Pending |
-| IMEX-01 | TBD | Pending |
-| IMEX-02 | TBD | Pending |
-| IMEX-03 | TBD | Pending |
-| IMEX-04 | TBD | Pending |
-| IMEX-05 | TBD | Pending |
-| HOOK-01 | TBD | Pending |
-| HOOK-02 | TBD | Pending |
-| HOOK-03 | TBD | Pending |
-| HOOK-04 | TBD | Pending |
-| HOOK-05 | TBD | Pending |
+| INFR-01 | Phase 6 | Planned |
+| INFR-02 | Phase 6 | Planned |
+| INFR-03 | Phase 6 | Planned |
+| INFR-04 | Phase 6 | Planned |
+| AIGN-01 | Phase 8 | Planned |
+| AIGN-02 | Phase 8 | Planned |
+| AIGN-03 | Phase 8 | Planned |
+| AIGN-04 | Phase 8 | Planned |
+| AIGN-05 | Phase 8 | Planned |
+| AIGN-06 | Phase 8 | Planned |
+| AIGN-07 | Phase 8 | Planned |
+| SYNC-01 | Phase 7 | Planned |
+| SYNC-02 | Phase 7 | Planned |
+| SYNC-03 | Phase 7 | Planned |
+| SYNC-04 | Phase 7 | Planned |
+| SYNC-05 | Phase 7 | Planned |
+| ANLT-01 | Phase 11 | Planned |
+| ANLT-02 | Phase 11 | Planned |
+| ANLT-03 | Phase 11 | Planned |
+| ANLT-04 | Phase 11 | Planned |
+| UXPL-01 | Phase 6 | Planned |
+| UXPL-02 | Phase 6 | Planned |
+| UXPL-03 | Phase 6 | Planned |
+| UXPL-04 | Phase 6 | Planned |
+| UXPL-05 | Phase 6 | Planned |
+| UXPL-06 | Phase 6 | Planned |
+| ECOM-01 | Phase 7 | Planned |
+| ECOM-02 | Phase 7 | Planned |
+| ECOM-03 | Phase 7 | Planned |
+| ECOM-04 | Phase 7 | Planned |
+| ECOM-05 | Phase 7 | Planned |
+| SCOR-01 | Phase 8 | Planned |
+| SCOR-02 | Phase 8 | Planned |
+| SCOR-03 | Phase 8 | Planned |
+| SCOR-04 | Phase 8 | Planned |
+| WKFL-01 | Phase 9 | Planned |
+| WKFL-02 | Phase 9 | Planned |
+| WKFL-03 | Phase 9 | Planned |
+| WKFL-04 | Phase 9 | Planned |
+| WKFL-05 | Phase 9 | Planned |
+| COLB-01 | Phase 9 | Planned |
+| COLB-02 | Phase 9 | Planned |
+| COLB-03 | Phase 9 | Planned |
+| COLB-04 | Phase 9 | Planned |
+| COLB-05 | Phase 9 | Planned |
+| IMEX-01 | Phase 10 | Planned |
+| IMEX-02 | Phase 10 | Planned |
+| IMEX-03 | Phase 10 | Planned |
+| IMEX-04 | Phase 10 | Planned |
+| IMEX-05 | Phase 10 | Planned |
+| HOOK-01 | Phase 10 | Planned |
+| HOOK-02 | Phase 10 | Planned |
+| HOOK-03 | Phase 10 | Planned |
+| HOOK-04 | Phase 10 | Planned |
+| HOOK-05 | Phase 10 | Planned |
 
 **Coverage:**
 
-- v2.0 requirements: 51 total
-- Mapped to phases: 0
-- Unmapped: 51
+- v2.0 requirements: 55 total
+- Mapped to phases: 55
+- Unmapped: 0
+
+Note: The original count of "51" was incorrect. Actual requirement count across all categories is 55 (INFR:4 + AIGN:7 + SYNC:5 + ANLT:4 + UXPL:6 + ECOM:5 + SCOR:4 + WKFL:5 + COLB:5 + IMEX:5 + HOOK:5).
 
 ---
 *Requirements defined: 2026-03-11*
-*Last updated: 2026-03-11 after v2.0 milestone initialization*
+*Last updated: 2026-03-11 after v2.0 roadmap creation*
