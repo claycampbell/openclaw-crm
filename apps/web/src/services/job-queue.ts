@@ -6,7 +6,7 @@
  */
 import { db } from "@/db";
 import { backgroundJobs } from "@/db/schema";
-import { eq, and, lte } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 export interface JobPayload {
   type: string;
@@ -65,36 +65,53 @@ export async function enqueueJob(
 
 /**
  * Process pending jobs up to the given batch size.
- * Claims jobs with status "pending" whose runAt is in the past,
- * marks them as "running", executes them, and updates status accordingly.
+ * Atomically claims jobs using FOR UPDATE SKIP LOCKED to prevent
+ * double-processing when multiple cron calls overlap.
+ * Executes registered handlers and implements exponential backoff retry.
  * Returns the number of jobs processed.
  */
 export async function processJobs(batchSize: number = 10): Promise<number> {
-  const pendingJobs = await db
-    .select()
-    .from(backgroundJobs)
-    .where(
-      and(
-        eq(backgroundJobs.status, "pending"),
-        lte(backgroundJobs.runAt, new Date())
-      )
+  // Atomically claim pending jobs — FOR UPDATE SKIP LOCKED prevents
+  // two overlapping cron invocations from grabbing the same rows
+  const claimed = await db.execute(sql`
+    UPDATE background_jobs
+    SET status = 'running', started_at = NOW()
+    WHERE id IN (
+      SELECT id FROM background_jobs
+      WHERE status = 'pending' AND run_at <= NOW()
+      ORDER BY run_at
+      LIMIT ${batchSize}
+      FOR UPDATE SKIP LOCKED
     )
-    .orderBy(backgroundJobs.runAt)
-    .limit(batchSize);
+    RETURNING *
+  `);
 
-  if (pendingJobs.length === 0) return 0;
+  const jobs = claimed.rows as Array<{
+    id: string;
+    type: string;
+    payload: Record<string, unknown> | null;
+    workspace_id: string | null;
+    retries: string;
+  }>;
+
+  if (!jobs || jobs.length === 0) return 0;
 
   let processed = 0;
 
-  for (const job of pendingJobs) {
-    // Mark as running
-    await db
-      .update(backgroundJobs)
-      .set({ status: "running", startedAt: new Date() })
-      .where(and(eq(backgroundJobs.id, job.id), eq(backgroundJobs.status, "pending")));
-
+  for (const job of jobs) {
     try {
-      // For now, just mark as completed — actual handlers will be wired up per job type
+      // Build the payload for the handler, including workspaceId
+      const handlerPayload: Record<string, unknown> = {
+        ...(job.payload ?? {}),
+        workspaceId: job.workspace_id,
+      };
+
+      const handled = await executeJob(job.type, handlerPayload);
+      if (!handled) {
+        console.warn(`[job-queue] No handler registered for job type: ${job.type} (id=${job.id})`);
+      }
+
+      // Mark as completed regardless of whether a handler was found
       await db
         .update(backgroundJobs)
         .set({ status: "completed", completedAt: new Date() })
@@ -102,19 +119,42 @@ export async function processJobs(batchSize: number = 10): Promise<number> {
 
       processed++;
     } catch (err) {
-      const newRetries = Number(job.retries) + 1;
+      const currentRetries = parseInt(job.retries, 10);
+      const newRetries = (isNaN(currentRetries) ? 0 : currentRetries) + 1;
       const maxRetries = 3;
-      const failed = newRetries >= maxRetries;
+      const exhausted = newRetries >= maxRetries;
 
-      await db
-        .update(backgroundJobs)
-        .set({
-          status: failed ? "failed" : "pending",
-          errorMessage: String(err),
-          retries: String(newRetries),
-          completedAt: failed ? new Date() : undefined,
-        })
-        .where(eq(backgroundJobs.id, job.id));
+      if (exhausted) {
+        // Dead-letter: mark as failed permanently
+        await db
+          .update(backgroundJobs)
+          .set({
+            status: "failed",
+            errorMessage: err instanceof Error ? err.message : String(err),
+            retries: String(newRetries),
+            failedAt: new Date(),
+            completedAt: new Date(),
+          })
+          .where(eq(backgroundJobs.id, job.id));
+        console.error(`[job-queue] Job ${job.id} (${job.type}) failed permanently after ${newRetries} retries:`, err);
+      } else {
+        // Exponential backoff: 2^retries minutes (2min, 4min)
+        const backoffMs = Math.pow(2, newRetries) * 60_000;
+        const nextRunAt = new Date(Date.now() + backoffMs);
+
+        await db
+          .update(backgroundJobs)
+          .set({
+            status: "pending",
+            errorMessage: err instanceof Error ? err.message : String(err),
+            retries: String(newRetries),
+            runAt: nextRunAt,
+          })
+          .where(eq(backgroundJobs.id, job.id));
+        console.warn(`[job-queue] Job ${job.id} (${job.type}) retry ${newRetries}/3 scheduled for ${nextRunAt.toISOString()}`);
+      }
+
+      processed++;
     }
   }
 
