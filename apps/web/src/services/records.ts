@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { records, recordValues, attributes, objects } from "@/db/schema";
+import { records, recordValues, attributes, objects, statuses } from "@/db/schema";
 import { eq, and, inArray, desc, asc, sql, type SQL } from "drizzle-orm";
 import { ATTRIBUTE_TYPE_COLUMN_MAP, type AttributeType } from "@openclaw-crm/shared";
 import type { FilterGroup, SortConfig } from "@openclaw-crm/shared";
@@ -94,7 +94,24 @@ function buildValueRow(
 
   switch (column) {
     case "text_value":
-      base.textValue = value as string;
+      // Guard against objects being stored as "[object Object]" —
+      // extract a sensible string if value is not already a primitive.
+      if (value !== null && typeof value === "object") {
+        // Common shapes from AI tools: { email: "..." }, { value: "..." }, or plain arrays
+        const obj = value as Record<string, unknown>;
+        const extracted =
+          obj.email ?? obj.value ?? obj.url ?? obj.domain ?? obj.phone ?? obj.name ?? null;
+        if (extracted !== null && extracted !== undefined) {
+          base.textValue = String(extracted);
+        } else if (Array.isArray(value)) {
+          // Shouldn't reach here for multiselect (handled upstream), but just in case
+          base.textValue = value.map(String).join(", ");
+        } else {
+          base.textValue = JSON.stringify(value);
+        }
+      } else {
+        base.textValue = value == null ? null : String(value);
+      }
       break;
     case "number_value":
       base.numberValue = String(value);
@@ -427,6 +444,25 @@ export async function deleteRecord(objectId: string, recordId: string) {
   return existing[0];
 }
 
+/** Resolve a status/select title to its ID. Returns the value unchanged if already a UUID. */
+async function resolveStatusTitle(
+  attributeId: string,
+  value: unknown
+): Promise<string | null> {
+  if (typeof value !== "string" || !value) return null;
+  // If it's already a UUID, return as-is
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)) {
+    return value;
+  }
+  // Look up by title (case-insensitive)
+  const matches = await db
+    .select({ id: statuses.id })
+    .from(statuses)
+    .where(and(eq(statuses.attributeId, attributeId), sql`lower(${statuses.title}) = lower(${value})`))
+    .limit(1);
+  return matches[0]?.id ?? null;
+}
+
 /** Write attribute values for a record */
 async function writeValues(
   recordId: string,
@@ -441,13 +477,21 @@ async function writeValues(
     if (!attrInfo) continue;
     if (value === null || value === undefined) continue;
 
-    if (attrInfo.isMultiselect && Array.isArray(value)) {
-      for (let i = 0; i < value.length; i++) {
-        const row = buildValueRow(recordId, attrInfo, value[i], i, createdBy);
+    // For status/select attributes, resolve title strings to IDs
+    let resolvedValue = value;
+    if (attrInfo.type === "status" || attrInfo.type === "select") {
+      const resolved = await resolveStatusTitle(attrInfo.id, value);
+      if (!resolved) continue; // Skip invalid status/select values
+      resolvedValue = resolved;
+    }
+
+    if (attrInfo.isMultiselect && Array.isArray(resolvedValue)) {
+      for (let i = 0; i < resolvedValue.length; i++) {
+        const row = buildValueRow(recordId, attrInfo, resolvedValue[i], i, createdBy);
         if (row) rows.push(row);
       }
     } else {
-      const row = buildValueRow(recordId, attrInfo, value, 0, createdBy);
+      const row = buildValueRow(recordId, attrInfo, resolvedValue, 0, createdBy);
       if (row) rows.push(row);
     }
   }

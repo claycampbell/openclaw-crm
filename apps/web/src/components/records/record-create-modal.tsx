@@ -112,8 +112,16 @@ function FieldInput({
       {type === "text" || type === "email_address" || type === "phone_number" || type === "domain" ? (
         <Input
           type={type === "email_address" ? "email" : type === "phone_number" ? "tel" : "text"}
-          value={(value as string) ?? ""}
-          onChange={(e) => onChange(e.target.value || null)}
+          value={
+            attr.isMultiselect && Array.isArray(value)
+              ? (value[0] as string) ?? ""
+              : (value as string) ?? ""
+          }
+          onChange={(e) => {
+            const v = e.target.value || null;
+            // Multiselect text fields (email_addresses, phone_numbers) need array values
+            onChange(attr.isMultiselect && v !== null ? [v] : v);
+          }}
           required={isRequired}
         />
       ) : type === "number" ? (

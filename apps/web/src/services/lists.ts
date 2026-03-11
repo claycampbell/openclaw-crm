@@ -449,7 +449,20 @@ async function writeEntryValues(
 
     switch (column) {
       case "text_value":
-        base.textValue = value as string;
+        if (value !== null && typeof value === "object") {
+          const obj = value as Record<string, unknown>;
+          const extracted =
+            obj.email ?? obj.value ?? obj.url ?? obj.domain ?? obj.phone ?? obj.name ?? null;
+          if (extracted !== null && extracted !== undefined) {
+            base.textValue = String(extracted);
+          } else if (Array.isArray(value)) {
+            base.textValue = value.map(String).join(", ");
+          } else {
+            base.textValue = JSON.stringify(value);
+          }
+        } else {
+          base.textValue = value == null ? null : String(value);
+        }
         break;
       case "number_value":
         base.numberValue = String(value);
