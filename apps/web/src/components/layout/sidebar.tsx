@@ -32,6 +32,7 @@ import {
   FileText,
   PartyPopper,
   Zap,
+  Flame,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -59,6 +60,7 @@ const mainNav = [
   { href: "/sequences", label: "Sequences", icon: Mail },
   { href: "/battlecards", label: "Battlecards", icon: Swords },
   { href: "/automations", label: "Automations", icon: Zap },
+  { href: "/hot-leads", label: "Hot Leads", icon: Flame },
   { href: "/approvals", label: "Approvals", icon: ClipboardCheck },
   { href: "/contracts", label: "Contracts", icon: FileText },
   { href: "/handoff", label: "Handoff", icon: PartyPopper },

@@ -91,10 +91,10 @@ This milestone is complete only when all are true:
 - [ ] **S11: Activity Scoring + Hot Leads** `risk:medium` `depends:[S01]`
   > After this: Each contact/company has a composite activity score; hot leads dashboard shows top 20 by score with trend indicators
 
-- [ ] **S12: Workflow Automation UI + Team Collaboration** `risk:medium` `depends:[S01]`
+- [x] **S12: Workflow Automation UI + Team Collaboration** `risk:medium` `depends:[S01]`
   > After this: Users can create automation rules via form UI; @mention teammates in notes; leave threaded comments; save/share filter views
 
-- [ ] **S13: Import/Export + Outbound Webhooks** `risk:low` `depends:[S01]`
+- [x] **S13: Import/Export + Outbound Webhooks** `risk:low` `depends:[S01]`
   > After this: CSV import with field mapping and dedup; CSV export with EAV flattening; outbound webhooks with HMAC signing and retry
 
 - [ ] **S14: Analytics Real Calculations** `risk:medium` `depends:[S10]`
