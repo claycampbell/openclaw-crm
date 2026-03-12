@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { useList } from "@/hooks/use-list";
+import { useConfirmDialog, ConfirmDialog } from "@/hooks/use-confirm-dialog";
 import { ListEntryTable } from "@/components/lists/list-entry-table";
 import { AddEntryModal } from "@/components/lists/add-entry-modal";
 import { Button } from "@/components/ui/button";
@@ -26,13 +28,23 @@ export default function ListPage() {
 
   const [addOpen, setAddOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const { dialogProps, confirm: confirmDelete } = useConfirmDialog();
 
   async function handleDelete() {
-    if (!confirm(`Delete list "${list?.name}"? This cannot be undone.`)) return;
+    const ok = await confirmDelete({
+      title: "Delete list",
+      description: `Delete list "${list?.name}"? This cannot be undone.`,
+      confirmLabel: "Delete",
+      variant: "destructive",
+    });
+    if (!ok) return;
     setDeleting(true);
     const res = await fetch(`/api/v1/lists/${listId}`, { method: "DELETE" });
     if (res.ok) {
+      toast.success("List deleted");
       router.push("/home");
+    } else {
+      toast.error("Failed to delete list");
     }
     setDeleting(false);
   }
@@ -116,6 +128,7 @@ export default function ListPage() {
         listId={listId}
         objectName={list.objectName}
       />
+      <ConfirmDialog {...dialogProps} />
     </div>
   );
 }

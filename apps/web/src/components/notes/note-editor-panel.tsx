@@ -15,6 +15,7 @@ import {
   Trash2,
   Building2,
 } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 interface NoteEditorPanelProps {
@@ -182,7 +183,9 @@ export function NoteEditorPanel({
     const nId = liveNoteIdRef.current;
     if (saveTimerRef.current !== null) clearTimeout(saveTimerRef.current);
     if (nId) {
-      await fetch(`/api/v1/notes/${nId}`, { method: "DELETE" });
+      const res = await fetch(`/api/v1/notes/${nId}`, { method: "DELETE" });
+      if (!res.ok) { toast.error("Failed to delete note"); return; }
+      toast.success("Note deleted");
       onNoteDeleted?.();
     }
     onOpenChange(false);

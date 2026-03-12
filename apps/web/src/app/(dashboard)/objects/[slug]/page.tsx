@@ -24,6 +24,7 @@ import {
   Download,
   Upload,
 } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 export default function ObjectPage() {
@@ -60,11 +61,17 @@ export default function ObjectPage() {
   const handleBulkDelete = useCallback(
     async (ids: string[]) => {
       if (!object) return;
-      await Promise.all(
+      const results = await Promise.all(
         ids.map((id) =>
           fetch(`/api/v1/objects/${slug}/records/${id}`, { method: "DELETE" })
         )
       );
+      const failed = results.filter((r) => !r.ok).length;
+      if (failed > 0) {
+        toast.error(`Failed to delete ${failed} record${failed > 1 ? "s" : ""}`);
+      } else {
+        toast.success(`Deleted ${ids.length} record${ids.length > 1 ? "s" : ""}`);
+      }
       fetchData();
     },
     [object, slug, fetchData]

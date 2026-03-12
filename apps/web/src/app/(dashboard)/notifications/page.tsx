@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Bell, CheckCheck, Loader2, ExternalLink } from "lucide-react";
 
@@ -39,11 +40,13 @@ export default function NotificationsPage() {
   }, []);
 
   async function handleMarkAllRead() {
-    await fetch("/api/v1/notifications/mark-all-read", { method: "POST" });
+    const res = await fetch("/api/v1/notifications/mark-all-read", { method: "POST" });
+    if (!res.ok) { toast.error("Failed to mark notifications"); return; }
     setNotifications((prev) =>
       prev.map((n) => ({ ...n, isRead: true }))
     );
     setUnreadCount(0);
+    toast.success("All notifications marked as read");
   }
 
   async function handleMarkRead(id: string) {

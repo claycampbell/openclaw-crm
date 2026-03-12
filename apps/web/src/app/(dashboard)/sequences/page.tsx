@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { toast } from "sonner";
 import { Mail, Plus, Play, Pause, BarChart2, Trash2, Archive } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 
@@ -55,10 +56,13 @@ export default function SequencesPage() {
         setNewName("");
         setNewDesc("");
         setShowCreate(false);
+        toast.success("Sequence created");
         fetchSequences();
+      } else {
+        toast.error("Failed to create sequence");
       }
     } catch (err) {
-      console.error("Failed to create sequence:", err);
+      toast.error("Failed to create sequence");
     } finally {
       setCreating(false);
     }
@@ -66,23 +70,27 @@ export default function SequencesPage() {
 
   const handleArchive = async (id: string) => {
     try {
-      await fetch(`/api/v1/sequences/${id}`, {
+      const res = await fetch(`/api/v1/sequences/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "archived" }),
       });
+      if (!res.ok) { toast.error("Failed to archive sequence"); return; }
+      toast.success("Sequence archived");
       fetchSequences();
-    } catch (err) {
-      console.error("Failed to archive sequence:", err);
+    } catch {
+      toast.error("Failed to archive sequence");
     }
   };
 
   const handleDelete = async (id: string) => {
     try {
-      await fetch(`/api/v1/sequences/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/v1/sequences/${id}`, { method: "DELETE" });
+      if (!res.ok) { toast.error("Failed to delete sequence"); return; }
+      toast.success("Sequence deleted");
       fetchSequences();
-    } catch (err) {
-      console.error("Failed to delete sequence:", err);
+    } catch {
+      toast.error("Failed to delete sequence");
     }
   };
 

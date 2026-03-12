@@ -11,7 +11,9 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useConfirmDialog, ConfirmDialog } from "@/hooks/use-confirm-dialog";
 
 interface ApprovalRule {
   id: string;
@@ -279,6 +281,7 @@ export default function ApprovalSettingsPage() {
   const [members, setMembers] = useState<WorkspaceMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
+  const { dialogProps, confirm: confirmDialog } = useConfirmDialog();
 
   async function loadData() {
     setLoading(true);
@@ -299,17 +302,27 @@ export default function ApprovalSettingsPage() {
   }, []);
 
   async function handleCreate(data: Record<string, unknown>) {
-    await fetch("/api/v1/approvals/rules", {
+    const res = await fetch("/api/v1/approvals/rules", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
+    if (!res.ok) { toast.error("Failed to create rule"); return; }
+    toast.success("Approval rule created");
     await loadData();
   }
 
   async function handleDelete(ruleId: string) {
-    if (!confirm("Deactivate this approval rule?")) return;
-    await fetch(`/api/v1/approvals/rules/${ruleId}`, { method: "DELETE" });
+    const ok = await confirmDialog({
+      title: "Deactivate approval rule",
+      description: "This rule will be deactivated and removed. Are you sure?",
+      confirmLabel: "Deactivate",
+      variant: "destructive",
+    });
+    if (!ok) return;
+    const res = await fetch(`/api/v1/approvals/rules/${ruleId}`, { method: "DELETE" });
+    if (!res.ok) { toast.error("Failed to deactivate rule"); return; }
+    toast.success("Rule deactivated");
     await loadData();
   }
 
@@ -370,6 +383,7 @@ export default function ApprovalSettingsPage() {
           onClose={() => setShowCreate(false)}
         />
       )}
+      <ConfirmDialog {...dialogProps} />
     </div>
   );
 }

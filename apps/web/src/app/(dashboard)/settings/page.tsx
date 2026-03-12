@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 
@@ -42,7 +43,10 @@ export default function SettingsPage() {
         const data = await res.json();
         setWorkspace(data.data);
         setSaved(true);
+        toast.success("Settings saved");
         setTimeout(() => setSaved(false), 2000);
+      } else {
+        toast.error("Failed to save settings");
       }
     } finally {
       setSaving(false);

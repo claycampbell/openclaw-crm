@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Upload, FileText, AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { parseCSV, type ParsedCSV } from "@/lib/csv-utils";
 
 interface AttributeDef {
@@ -191,6 +192,7 @@ export function CSVImportModal({
         const data = await res.json();
         setResult(data.data);
         setStep("done");
+        toast.success(`Imported ${data.data.created} record${data.data.created !== 1 ? "s" : ""}`);
         onImportComplete();
       } else {
         const err = await res.json();

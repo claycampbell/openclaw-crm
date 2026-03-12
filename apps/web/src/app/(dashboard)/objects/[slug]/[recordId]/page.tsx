@@ -18,10 +18,12 @@ import {
   Handshake,
   Box,
 } from "lucide-react";
+import { toast } from "sonner";
 import { extractPersonalName } from "@/lib/display-name";
 import { NextBestActionBadge } from "@/components/analytics/NextBestActionBadge";
 import { RecordDetailSkeleton } from "@/components/ui/page-skeleton";
 import { Breadcrumbs } from "@/components/ui/breadcrumbs";
+import { useConfirmDialog, ConfirmDialog } from "@/hooks/use-confirm-dialog";
 
 interface ObjectData {
   id: string;
@@ -61,6 +63,7 @@ export default function RecordDetailPage() {
   const [activities, setActivities] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
+  const { dialogProps, confirm } = useConfirmDialog();
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -96,29 +99,39 @@ export default function RecordDetailPage() {
         prev ? { ...prev, values: { ...prev.values, [attrSlug]: value } } : prev
       );
 
-      await fetch(`/api/v1/objects/${slug}/records/${recordId}`, {
+      const res = await fetch(`/api/v1/objects/${slug}/records/${recordId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ values: { [attrSlug]: value } }),
       });
+      if (!res.ok) toast.error("Failed to update record");
     },
     [slug, recordId]
   );
 
   const handleDelete = useCallback(async () => {
-    if (!confirm("Are you sure you want to delete this record?")) return;
+    const ok = await confirm({
+      title: "Delete record",
+      description: "This record and all its data will be permanently deleted. This cannot be undone.",
+      confirmLabel: "Delete",
+      variant: "destructive",
+    });
+    if (!ok) return;
     setDeleting(true);
     try {
       const res = await fetch(`/api/v1/objects/${slug}/records/${recordId}`, {
         method: "DELETE",
       });
       if (res.ok) {
+        toast.success("Record deleted");
         router.push(`/objects/${slug}`);
+      } else {
+        toast.error("Failed to delete record");
       }
     } finally {
       setDeleting(false);
     }
-  }, [slug, recordId, router]);
+  }, [slug, recordId, router, confirm]);
 
   if (loading && !record) {
     return <RecordDetailSkeleton />;
@@ -281,6 +294,7 @@ export default function RecordDetailPage() {
           </div>
         </div>
       </div>
+      <ConfirmDialog {...dialogProps} />
     </div>
   );
 }

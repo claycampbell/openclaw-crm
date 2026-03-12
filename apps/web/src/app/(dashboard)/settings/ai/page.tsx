@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -54,6 +55,9 @@ export default function AISettingsPage() {
         const data = await res.json();
         setHasApiKey(data.data.hasApiKey);
         setApiKey("");
+        toast.success("AI settings saved");
+      } else {
+        toast.error("Failed to save AI settings");
       }
     } finally {
       setSaving(false);

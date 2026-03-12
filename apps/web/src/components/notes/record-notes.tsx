@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { toast } from "sonner";
 import { NoteEditor } from "./note-editor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -66,24 +67,30 @@ export function RecordNotes({ objectSlug, recordId }: RecordNotesProps) {
       setNewTitle("");
       setNewContent(null);
       setCreating(false);
+      toast.success("Note created");
       fetchNotes();
+    } else {
+      toast.error("Failed to create note");
     }
   }
 
   async function handleUpdate(noteId: string, updates: { title?: string; content?: unknown }) {
-    await fetch(`/api/v1/notes/${noteId}`, {
+    const res = await fetch(`/api/v1/notes/${noteId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(updates),
     });
 
+    if (!res.ok) { toast.error("Failed to update note"); return; }
     setNotes((prev) =>
       prev.map((n) => (n.id === noteId ? { ...n, ...updates } : n))
     );
   }
 
   async function handleDelete(noteId: string) {
-    await fetch(`/api/v1/notes/${noteId}`, { method: "DELETE" });
+    const res = await fetch(`/api/v1/notes/${noteId}`, { method: "DELETE" });
+    if (!res.ok) { toast.error("Failed to delete note"); return; }
+    toast.success("Note deleted");
     setNotes((prev) => prev.filter((n) => n.id !== noteId));
   }
 

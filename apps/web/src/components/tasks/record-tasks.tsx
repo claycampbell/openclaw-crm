@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Plus, Check, Circle, Calendar, CheckSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -86,11 +87,12 @@ export function RecordTasks({
         t.id === taskId ? { ...t, isCompleted: !isCompleted } : t
       )
     );
-    await fetch(`/api/v1/tasks/${taskId}`, {
+    const res = await fetch(`/api/v1/tasks/${taskId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ isCompleted: !isCompleted }),
     });
+    if (!res.ok) toast.error("Failed to update task");
   }
 
   function openCreateDialog() {
@@ -117,21 +119,25 @@ export function RecordTasks({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-      if (!res.ok) throw new Error("Failed to create task");
+      if (!res.ok) { toast.error("Failed to create task"); return; }
+      toast.success("Task created");
     } else if (editingTask) {
       const res = await fetch(`/api/v1/tasks/${editingTask.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-      if (!res.ok) throw new Error("Failed to update task");
+      if (!res.ok) { toast.error("Failed to update task"); return; }
+      toast.success("Task updated");
     }
     fetchTasks();
   }
 
   async function handleDelete() {
     if (!editingTask) return;
-    await fetch(`/api/v1/tasks/${editingTask.id}`, { method: "DELETE" });
+    const res = await fetch(`/api/v1/tasks/${editingTask.id}`, { method: "DELETE" });
+    if (!res.ok) { toast.error("Failed to delete task"); return; }
+    toast.success("Task deleted");
     fetchTasks();
   }
 
