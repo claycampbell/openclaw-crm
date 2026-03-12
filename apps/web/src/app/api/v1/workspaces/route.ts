@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { success, badRequest } from "@/lib/api-utils";
-import { createWorkspace, createWorkspaceWithHierarchy, listUserWorkspaces } from "@/services/workspace";
+import { createWorkspace, createWorkspaceWithHierarchy, listUserWorkspaces, listUserWorkspacesWithHierarchy } from "@/services/workspace";
 import { WORKSPACE_TYPES, type WorkspaceType } from "@openclaw-crm/shared";
 import { db } from "@/db";
 import { workspaceInvites, workspaceMembers } from "@/db/schema";
@@ -17,8 +17,14 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const workspaces = await listUserWorkspaces(session.user.id);
-  return success(workspaces);
+  const grouped = req.nextUrl.searchParams.get("grouped") === "true";
+  if (grouped) {
+    const hierarchy = await listUserWorkspacesWithHierarchy(session.user.id);
+    return success(hierarchy);
+  }
+
+  const workspaceList = await listUserWorkspaces(session.user.id);
+  return success(workspaceList);
 }
 
 /** POST /api/v1/workspaces — Create a new workspace */

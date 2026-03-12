@@ -257,6 +257,83 @@ export async function listUserWorkspaces(userId: string) {
     .orderBy(workspaces.createdAt);
 }
 
+/**
+ * List user workspaces grouped by hierarchy:
+ * - Standalone companies (no parent) at top
+ * - Agency groups: agency → companies → BUs nested
+ * Each item includes type and parentWorkspaceId.
+ */
+export async function listUserWorkspacesWithHierarchy(userId: string) {
+  const all = await listUserWorkspaces(userId);
+
+  // Index by ID for fast lookup
+  const byId = new Map(all.map(ws => [ws.id, ws]));
+
+  // Separate into categories
+  const agencies = all.filter(ws => ws.type === "agency");
+  const companies = all.filter(ws => ws.type === "company");
+  const businessUnits = all.filter(ws => ws.type === "business_unit");
+
+  // Group companies under their agency parent
+  const companiesByAgency = new Map<string, typeof companies>();
+  const standaloneCompanies: typeof companies = [];
+
+  for (const co of companies) {
+    if (co.parentWorkspaceId && agencies.some(a => a.id === co.parentWorkspaceId)) {
+      const arr = companiesByAgency.get(co.parentWorkspaceId) ?? [];
+      arr.push(co);
+      companiesByAgency.set(co.parentWorkspaceId, arr);
+    } else {
+      standaloneCompanies.push(co);
+    }
+  }
+
+  // Group BUs under their company parent
+  const busByCompany = new Map<string, typeof businessUnits>();
+  for (const bu of businessUnits) {
+    if (bu.parentWorkspaceId) {
+      const arr = busByCompany.get(bu.parentWorkspaceId) ?? [];
+      arr.push(bu);
+      busByCompany.set(bu.parentWorkspaceId, arr);
+    }
+  }
+
+  // Build grouped structure
+  const groups: Array<{
+    type: "standalone" | "agency_group";
+    workspace: typeof all[0];
+    children?: Array<{
+      workspace: typeof all[0];
+      children?: typeof all;
+    }>;
+  }> = [];
+
+  // Standalone companies first
+  for (const co of standaloneCompanies) {
+    const bus = busByCompany.get(co.id) ?? [];
+    groups.push({
+      type: bus.length > 0 ? "agency_group" : "standalone",
+      workspace: co,
+      children: bus.length > 0 ? bus.map(bu => ({ workspace: bu })) : undefined,
+    });
+  }
+
+  // Then agency groups
+  for (const agency of agencies) {
+    const agencyCompanies = companiesByAgency.get(agency.id) ?? [];
+    groups.push({
+      type: "agency_group",
+      workspace: agency,
+      children: agencyCompanies.map(co => ({
+        workspace: co,
+        children: busByCompany.get(co.id),
+      })),
+    });
+  }
+
+  return groups;
+}
+
 /** Seed standard objects (People, Companies, Deals) + attributes + deal stages for a workspace */
 export async function seedWorkspaceObjects(workspaceId: string) {
   for (const stdObj of STANDARD_OBJECTS) {

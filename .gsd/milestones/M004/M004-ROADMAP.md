@@ -53,7 +53,7 @@ This milestone is complete only when all are true:
 - [x] **S01: Workspace Hierarchy Schema & Core API** `risk:high` `depends:[]`
   > After this: Company and BU workspaces can be created via API, existing workspaces are auto-typed as 'company', parent-child relationships are stored and queryable, the migration is proven safe
 
-- [ ] **S02: Hierarchy-Aware Auth Context & Workspace Switching** `risk:high` `depends:[S01]`
+- [x] **S02: Hierarchy-Aware Auth Context & Workspace Switching** `risk:high` `depends:[S01]`
   > After this: `getAuthContext()` returns workspace type and child IDs, the workspace switcher API supports hierarchy-aware switching, the cookie correctly tracks Company vs BU level context
 
 - [ ] **S03: Company Roll-Up Views & BU Scoping** `risk:medium` `depends:[S02]`
