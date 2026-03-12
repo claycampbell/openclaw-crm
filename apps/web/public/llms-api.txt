@@ -144,6 +144,82 @@ GET    /api/v1/api-keys                                  : List API keys
 POST   /api/v1/api-keys                                  : Create key {name, scopes?, expiresAt?}
 DELETE /api/v1/api-keys/:keyId                           : Revoke key
 
+### AI Chat
+POST   /api/v1/chat/completions                          : Stream AI response (SSE) {conversationId, message}
+GET    /api/v1/chat/conversations                         : List conversations
+POST   /api/v1/chat/conversations                         : Create conversation
+GET    /api/v1/chat/conversations/:id                     : Get conversation with messages
+DELETE /api/v1/chat/conversations/:id                     : Delete conversation
+POST   /api/v1/chat/tool-confirm                          : Approve/reject AI write tool {toolCallId, approved}
+
+### Dashboard & Analytics
+GET    /api/v1/dashboard?view=rep|manager|leadership      : Pipeline dashboard data
+POST   /api/v1/dashboard/preferences                      : Save view preference {view}
+GET    /api/v1/activity-scores?limit=20                   : Activity-scored records (hot leads)
+GET    /api/v1/analytics/win-loss                         : Win/loss pattern analysis
+GET    /api/v1/analytics/rep-coaching                     : Rep coaching metrics
+GET    /api/v1/analytics/forecast                         : Pipeline forecast
+GET    /api/v1/analytics/next-best-action                 : AI next best action
+
+### Reviews (AI Drafts + Approvals)
+GET    /api/v1/assets?status=draft                        : List AI-generated drafts
+GET    /api/v1/assets/:id                                 : Get asset detail
+POST   /api/v1/assets/:id/approve                         : Approve AI draft
+POST   /api/v1/assets/:id/reject                          : Reject AI draft
+GET    /api/v1/approvals/requests?status=pending           : List approval requests
+POST   /api/v1/approvals/requests                          : Create approval request
+GET    /api/v1/approvals/requests/:id                      : Get approval request
+POST   /api/v1/approvals/requests/:id/approve              : Approve {note?}
+POST   /api/v1/approvals/requests/:id/reject               : Reject {note?}
+GET    /api/v1/approvals/rules                             : List approval rules
+POST   /api/v1/approvals/rules                             : Create approval rule
+PUT    /api/v1/approvals/rules/:id                         : Update approval rule
+DELETE /api/v1/approvals/rules/:id                         : Delete approval rule
+
+### Sales Tools
+GET    /api/v1/sequences                                  : List sequences
+POST   /api/v1/sequences                                  : Create sequence {name, description?}
+GET    /api/v1/sequences/:id                              : Get sequence
+PATCH  /api/v1/sequences/:id                              : Update sequence
+DELETE /api/v1/sequences/:id                              : Delete sequence
+POST   /api/v1/sequences/:id/steps                        : Add step to sequence
+POST   /api/v1/sequences/:id/enrollments                  : Enroll contacts {recordIds}
+GET    /api/v1/battlecards                                : List battlecards
+
+### Close (Contracts + Handoff)
+GET    /api/v1/contracts                                  : List contracts
+POST   /api/v1/contracts                                  : Create contract {title, contractType, routeToApproval?}
+GET    /api/v1/contracts/:id                              : Get contract
+PATCH  /api/v1/contracts/:id                              : Update contract {status}
+GET    /api/v1/contracts/:id/download                     : Download contract
+GET    /api/v1/contracts/templates                        : List templates
+POST   /api/v1/contracts/templates                        : Create template
+GET    /api/v1/close-flow/handoff                         : List handoff briefs
+POST   /api/v1/close-flow/handoff                         : Create handoff brief
+POST   /api/v1/close-flow/handoff/:id/deliver             : Deliver via webhook {webhookUrl}
+
+### Automations
+GET    /api/v1/automations                                : List automation rules
+POST   /api/v1/automations                                : Create rule {name, triggerType, triggerConfig, actionType, actionConfig, enabled}
+GET    /api/v1/automations/:id                            : Get rule
+PATCH  /api/v1/automations/:id                            : Update rule
+DELETE /api/v1/automations/:id                            : Delete rule
+
+### Webhooks
+GET    /api/v1/webhooks                                   : List outbound webhooks
+POST   /api/v1/webhooks                                   : Create webhook {name, url, events[], secret?}
+PATCH  /api/v1/webhooks/:id                               : Update webhook {enabled?, events?}
+DELETE /api/v1/webhooks/:id                               : Delete webhook
+POST   /api/v1/webhooks/:id/test                          : Send test ping
+
+### AI Settings
+GET    /api/v1/ai-settings                                : Get AI config (OpenRouter)
+PATCH  /api/v1/ai-settings                                : Update AI config {apiKey?, model?}
+POST   /api/v1/ai-settings/test                           : Test AI connection
+
+### Timeline
+GET    /api/v1/timeline/:recordId                         : Record activity timeline
+
 ## Value Formats by Attribute Type
 
 When setting record values, use these formats:
