@@ -325,9 +325,9 @@ export default function InboxPage() {
         <div className="flex items-center gap-3">
           <Inbox className="h-6 w-6 text-muted-foreground" />
           <div>
-            <h1 className="text-2xl font-semibold">Inbox</h1>
+            <h1 className="text-2xl font-semibold">Reviews</h1>
             <p className="text-sm text-muted-foreground">
-              Review AI drafts and approval requests
+              AI drafts and approval requests that need your attention
             </p>
           </div>
         </div>
