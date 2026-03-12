@@ -65,7 +65,7 @@ This milestone is complete only when all are true:
 - [x] **S05: Workspace Hierarchy UI** `risk:medium` `depends:[S02, S04]`
   > After this: Sidebar workspace switcher displays Company → BU hierarchy, users can switch between Company-level and BU-level views, Agency workspace is accessible, create-workspace flow supports BU creation under a Company
 
-- [ ] **S06: Joint Opportunity Cross-Visibility & Integration** `risk:low` `depends:[S03, S04, S05]`
+- [x] **S06: Joint Opportunity Cross-Visibility & Integration** `risk:low` `depends:[S03, S04, S05]`
   > After this: Joint opportunities appear in each participating entity's pipeline view with a badge, Company roll-up includes Agency joint deals, dashboard metrics include joint opportunity data, E2E tests prove the full integrated flow
 
 ## Boundary Map

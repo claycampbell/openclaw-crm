@@ -1,7 +1,8 @@
 import { NextRequest } from "next/server";
-import { getAuthContext, unauthorized, notFound, badRequest, success } from "@/lib/api-utils";
-import { getObjectBySlug } from "@/services/objects";
+import { getAuthContext, unauthorized, notFound, badRequest, success, resolveWorkspaceScope } from "@/lib/api-utils";
+import { getObjectBySlug, getObjectsBySlugAcrossWorkspaces } from "@/services/objects";
 import { getRecord, updateRecord, deleteRecord } from "@/services/records";
+import { getParticipationsForRecord } from "@/services/deal-participations";
 import { handleRecordUpdated } from "@/services/crm-events";
 
 function extractRecordSummary(record: Record<string, unknown>): string {
@@ -37,13 +38,38 @@ export async function GET(
   if (!ctx) return unauthorized();
 
   const { slug, recordId } = await params;
-  const obj = await getObjectBySlug(ctx.workspaceId, slug);
-  if (!obj) return notFound("Object not found");
 
-  const record = await getRecord(obj.id, recordId);
+  // Try primary workspace first, then scoped workspaces for roll-up/participation
+  let record = null;
+  let obj = await getObjectBySlug(ctx.workspaceId, slug);
+
+  if (obj) {
+    record = await getRecord(obj.id, recordId);
+  }
+
+  // If not found in primary, search across scoped workspaces
+  if (!record) {
+    const scope = resolveWorkspaceScope(ctx);
+    if (scope.length > 1) {
+      const matchingObjects = await getObjectsBySlugAcrossWorkspaces(scope, slug);
+      for (const mo of matchingObjects) {
+        record = await getRecord(mo.id, recordId);
+        if (record) break;
+      }
+    }
+  }
+
   if (!record) return notFound("Record not found");
 
-  return success(record);
+  // Enrich with joint opportunity data
+  const participations = await getParticipationsForRecord(recordId);
+  const enriched = {
+    ...record,
+    isJoint: (record as any).isJoint ?? false,
+    participations: participations.length > 0 ? participations : undefined,
+  };
+
+  return success(enriched);
 }
 
 export async function PATCH(

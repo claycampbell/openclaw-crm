@@ -1,5 +1,6 @@
 import { db } from "@/db";
 import { records, recordValues, attributes, objects, statuses } from "@/db/schema";
+import { dealParticipations } from "@/db/schema/deal-participations";
 import { eq, and, inArray, desc, asc, sql, or, gt, type SQL } from "drizzle-orm";
 import { ATTRIBUTE_TYPE_COLUMN_MAP, type AttributeType } from "@openclaw-crm/shared";
 import type { FilterGroup, SortConfig } from "@openclaw-crm/shared";
@@ -600,6 +601,78 @@ export async function listJointRecords(
     records: await hydrateRecords(recordRows, valueRows, byId),
     total: Number(countResult.count),
   };
+}
+
+/**
+ * Get records where a specific workspace participates.
+ * Returns full flat records hydrated with values.
+ * Used to merge participated deals into a workspace's deal list.
+ */
+export async function getParticipatedRecords(
+  workspaceId: string,
+  objectSlug?: string,
+  options: { limit?: number } = {}
+) {
+  const { limit = 50 } = options;
+
+  // Get record IDs where this workspace participates
+  const participations = await db
+    .select({ recordId: dealParticipations.recordId })
+    .from(dealParticipations)
+    .where(eq(dealParticipations.workspaceId, workspaceId))
+    .limit(limit);
+
+  if (participations.length === 0) return [];
+
+  const recordIds = participations.map(p => p.recordId);
+
+  // Fetch the records with their values
+  let recordRows = await db
+    .select()
+    .from(records)
+    .where(inArray(records.id, recordIds))
+    .orderBy(desc(records.createdAt));
+
+  // Optionally filter by object slug
+  if (objectSlug && recordRows.length > 0) {
+    const objectIds = [...new Set(recordRows.map(r => r.objectId))];
+    const matchingObjects = await db
+      .select({ id: objects.id })
+      .from(objects)
+      .where(and(inArray(objects.id, objectIds), eq(objects.slug, objectSlug)));
+    const validObjectIds = new Set(matchingObjects.map(o => o.id));
+    recordRows = recordRows.filter(r => validObjectIds.has(r.objectId));
+  }
+
+  if (recordRows.length === 0) return [];
+
+  // Group records by objectId for attribute loading
+  const byObjectId = new Map<string, typeof recordRows>();
+  for (const r of recordRows) {
+    const arr = byObjectId.get(r.objectId) ?? [];
+    arr.push(r);
+    byObjectId.set(r.objectId, arr);
+  }
+
+  // Hydrate each group with its object's attributes
+  const allRecordIds = recordRows.map(r => r.id);
+  const allValues = await db
+    .select()
+    .from(recordValues)
+    .where(inArray(recordValues.recordId, allRecordIds));
+
+  // Build unified byId map across all objects
+  const unifiedById = new Map<string, AttributeInfo & { slug: string }>();
+  for (const objectId of byObjectId.keys()) {
+    const { byId } = await loadAttributes(objectId);
+    for (const [id, info] of byId) {
+      unifiedById.set(id, info);
+    }
+  }
+
+  const hydrated = await hydrateRecords(recordRows, allValues, unifiedById);
+  // Mark as participation records
+  return hydrated.map(r => ({ ...r, isParticipation: true }));
 }
 
 export async function createRecord(
