@@ -49,10 +49,11 @@ interface LeadershipData {
   topDeals: DealRow[];
 }
 
-function formatCurrency(value: number): string {
-  if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
-  if (value >= 1_000) return `$${(value / 1_000).toFixed(0)}K`;
-  return `$${value.toFixed(0)}`;
+function formatCurrency(value: number | null | undefined): string {
+  const v = value ?? 0;
+  if (v >= 1_000_000) return `$${(v / 1_000_000).toFixed(1)}M`;
+  if (v >= 1_000) return `$${(v / 1_000).toFixed(0)}K`;
+  return `$${v.toFixed(0)}`;
 }
 
 function StatCard({
@@ -170,8 +171,9 @@ export default function DashboardPage() {
 
   async function handleViewChange(newView: DashboardView) {
     setView(newView);
+    setData(null); // Clear stale data to prevent type mismatch crash
     // Save preference
-    await fetch("/api/v1/dashboard/preferences", {
+    fetch("/api/v1/dashboard/preferences", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ view: newView }),
