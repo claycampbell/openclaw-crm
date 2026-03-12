@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -33,6 +33,7 @@ import {
   PartyPopper,
   Zap,
   Flame,
+  PanelLeft,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -48,6 +49,8 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+
+const SIDEBAR_STORAGE_KEY = "sidebar-expanded";
 
 const mainNav = [
   { href: "/home", label: "Home", icon: Home },
@@ -103,9 +106,35 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const [createOpen, setCreateOpen] = useState(false);
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [activeWorkspace, setActiveWorkspace] = useState<Workspace | null>(null);
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(true);
+  const [mounted, setMounted] = useState(false);
   const [inboxCount, setInboxCount] = useState(0);
   const { theme, setTheme } = useTheme();
+
+  // Load persisted sidebar state
+  useEffect(() => {
+    setMounted(true);
+    try {
+      const stored = localStorage.getItem(SIDEBAR_STORAGE_KEY);
+      if (stored !== null) {
+        setExpanded(stored === "true");
+      }
+    } catch {
+      // localStorage unavailable
+    }
+  }, []);
+
+  const toggleExpanded = useCallback(() => {
+    setExpanded((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem(SIDEBAR_STORAGE_KEY, String(next));
+      } catch {
+        // localStorage unavailable
+      }
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     // Load pending draft count for inbox badge
@@ -165,65 +194,89 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
     }
   }
 
+  // Prevent layout shift on first render — default to expanded, then correct from localStorage
+  const isExpanded = mounted ? expanded : true;
+
   return (
     <aside
-      onMouseEnter={() => setExpanded(true)}
-      onMouseLeave={() => setExpanded(false)}
       className={cn(
         "flex h-full flex-col border-r border-sidebar-border bg-sidebar sidebar-glass transition-all duration-200 ease-out overflow-hidden",
-        expanded ? "w-56" : "w-12"
+        isExpanded ? "w-56" : "w-12"
       )}
     >
-      {/* Workspace switcher */}
+      {/* Header: Logo + Toggle */}
       <div className="flex h-14 items-center px-2.5">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button className="flex w-full items-center gap-2.5 rounded-lg px-1.5 py-1.5 text-left hover:bg-sidebar-accent transition-colors">
-              <LogoMark size={28} className="shrink-0" />
-              {expanded && (
-                <>
+        {isExpanded ? (
+          <div className="flex w-full items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex flex-1 items-center gap-2.5 rounded-lg px-1.5 py-1.5 text-left hover:bg-sidebar-accent transition-colors min-w-0">
+                  <LogoMark size={28} className="shrink-0" />
                   <span className="text-sm font-medium text-foreground truncate flex-1">
                     {activeWorkspace?.name || "Aria"}
                   </span>
                   <ChevronsUpDown className="h-3 w-3 text-muted-foreground shrink-0" />
-                </>
-              )}
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-52">
+                {workspaces.map((ws) => (
+                  <DropdownMenuItem
+                    key={ws.id}
+                    onClick={() => {
+                      if (ws.id !== activeWorkspace?.id) {
+                        switchWorkspace(ws);
+                      }
+                    }}
+                    className="flex items-center gap-2"
+                  >
+                    <div className="flex h-6 w-6 items-center justify-center rounded-md bg-foreground/5 text-xs font-semibold text-foreground shrink-0">
+                      {ws.name.charAt(0).toUpperCase()}
+                    </div>
+                    <span className="truncate flex-1">{ws.name}</span>
+                    {ws.id === activeWorkspace?.id && (
+                      <Check className="h-3.5 w-3.5 text-primary shrink-0" />
+                    )}
+                  </DropdownMenuItem>
+                ))}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href="/select-workspace?create=true" className="flex items-center gap-2">
+                    <Plus className="h-4 w-4" />
+                    <span>Create workspace</span>
+                  </Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <button
+              onClick={toggleExpanded}
+              className="rounded-md p-1 text-muted-foreground hover:bg-sidebar-accent hover:text-foreground transition-colors shrink-0"
+              aria-label="Collapse sidebar"
+            >
+              <PanelLeft className="h-4 w-4" />
             </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-52">
-            {workspaces.map((ws) => (
-              <DropdownMenuItem
-                key={ws.id}
-                onClick={() => {
-                  if (ws.id !== activeWorkspace?.id) {
-                    switchWorkspace(ws);
-                  }
-                }}
-                className="flex items-center gap-2"
+          </div>
+        ) : (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={toggleExpanded}
+                className="flex w-full items-center justify-center rounded-lg py-1.5 text-muted-foreground hover:bg-sidebar-accent hover:text-foreground transition-colors"
+                aria-label="Expand sidebar"
               >
-                <div className="flex h-6 w-6 items-center justify-center rounded-md bg-foreground/5 text-xs font-semibold text-foreground shrink-0">
-                  {ws.name.charAt(0).toUpperCase()}
-                </div>
-                <span className="truncate flex-1">{ws.name}</span>
-                {ws.id === activeWorkspace?.id && (
-                  <Check className="h-3.5 w-3.5 text-primary shrink-0" />
-                )}
-              </DropdownMenuItem>
-            ))}
-            <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <Link href="/select-workspace?create=true" className="flex items-center gap-2">
-                <Plus className="h-4 w-4" />
-                <span>Create workspace</span>
-              </Link>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+                <PanelLeft className="h-4 w-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="font-medium">
+              Expand sidebar
+            </TooltipContent>
+          </Tooltip>
+        )}
       </div>
 
       {/* Main navigation */}
       <nav className="flex-1 px-2 py-2 overflow-y-auto">
-        {expanded && (
+        {isExpanded && (
           <div className="px-2.5 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
             Core
           </div>
@@ -234,7 +287,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
               key={item.href}
               {...item}
               active={pathname === item.href}
-              expanded={expanded}
+              expanded={isExpanded}
               onClick={onNavigate}
               badge={item.href === "/inbox" && inboxCount > 0 ? inboxCount : undefined}
             />
@@ -243,7 +296,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 
         <div className="my-3 mx-2 h-px bg-sidebar-border" />
 
-        {expanded && (
+        {isExpanded && (
           <div className="px-2.5 pb-1 pt-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
             Records
           </div>
@@ -254,7 +307,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
               key={item.href}
               {...item}
               active={pathname.startsWith(item.href)}
-              expanded={expanded}
+              expanded={isExpanded}
               onClick={onNavigate}
             />
           ))}
@@ -262,7 +315,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 
         <div className="my-3 mx-2 h-px bg-sidebar-border" />
 
-        {expanded && (
+        {isExpanded && (
           <div className="px-2.5 pb-1 pt-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
             Analytics
           </div>
@@ -273,13 +326,13 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
               key={item.href}
               {...item}
               active={pathname.startsWith(item.href)}
-              expanded={expanded}
+              expanded={isExpanded}
               onClick={onNavigate}
             />
           ))}
         </div>
 
-        {expanded && lists.length > 0 && (
+        {isExpanded && lists.length > 0 && (
           <>
             <div className="my-3 mx-2 h-px bg-sidebar-border" />
             <div className="space-y-0.5">
@@ -306,7 +359,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           </>
         )}
 
-        {expanded && (
+        {isExpanded && (
           <button
             onClick={() => setCreateOpen(true)}
             className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors"
@@ -324,13 +377,13 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
             key={item.href}
             {...item}
             active={pathname.startsWith(item.href)}
-            expanded={expanded}
+            expanded={isExpanded}
             onClick={onNavigate}
           />
         ))}
 
         {/* Theme toggle */}
-        {expanded ? (
+        {isExpanded ? (
           <button
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
             className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
