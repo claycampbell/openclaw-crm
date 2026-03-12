@@ -24,8 +24,6 @@ import {
   Sun,
   Moon,
   BarChart2,
-  TrendingUp,
-  UserCheck,
   Swords,
   Mail,
   ClipboardCheck,
@@ -34,6 +32,7 @@ import {
   Zap,
   Flame,
   PanelLeft,
+  FileCheck,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -59,14 +58,18 @@ const mainNav = [
   { href: "/tasks", label: "Tasks", icon: CheckSquare },
   { href: "/notes", label: "Notes", icon: StickyNote },
   { href: "/notifications", label: "Notifications", icon: Bell },
+];
+
+const salesNav = [
   { href: "/dashboard", label: "Dashboard", icon: BarChart2 },
+  { href: "/hot-leads", label: "Hot Leads", icon: Flame },
   { href: "/sequences", label: "Sequences", icon: Mail },
   { href: "/battlecards", label: "Battlecards", icon: Swords },
+  { href: "/close", label: "Close", icon: FileCheck },
+];
+
+const automationNav = [
   { href: "/automations", label: "Automations", icon: Zap },
-  { href: "/hot-leads", label: "Hot Leads", icon: Flame },
-  { href: "/approvals", label: "Approvals", icon: ClipboardCheck },
-  { href: "/contracts", label: "Contracts", icon: FileText },
-  { href: "/handoff", label: "Handoff", icon: PartyPopper },
 ];
 
 const objectNav = [
@@ -75,11 +78,7 @@ const objectNav = [
   { href: "/objects/deals", label: "Deals", icon: Handshake, iconColor: "text-emerald-500" },
 ];
 
-const analyticsNav = [
-  { href: "/analytics/win-loss", label: "Win/Loss", icon: BarChart2 },
-  { href: "/analytics/rep-coaching", label: "Rep Coaching", icon: UserCheck },
-  { href: "/analytics/forecast", label: "Forecast", icon: TrendingUp },
-];
+
 
 const bottomNav = [
   { href: "/docs", label: "Docs", icon: BookOpen },
@@ -317,11 +316,30 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
 
         {isExpanded && (
           <div className="px-2.5 pb-1 pt-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
-            Analytics
+            Sales
           </div>
         )}
         <div className="space-y-0.5">
-          {analyticsNav.map((item) => (
+          {salesNav.map((item) => (
+            <NavItem
+              key={item.href}
+              {...item}
+              active={pathname === item.href || pathname.startsWith(item.href + "/")}
+              expanded={isExpanded}
+              onClick={onNavigate}
+            />
+          ))}
+        </div>
+
+        <div className="my-3 mx-2 h-px bg-sidebar-border" />
+
+        {isExpanded && (
+          <div className="px-2.5 pb-1 pt-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+            Automation
+          </div>
+        )}
+        <div className="space-y-0.5">
+          {automationNav.map((item) => (
             <NavItem
               key={item.href}
               {...item}
