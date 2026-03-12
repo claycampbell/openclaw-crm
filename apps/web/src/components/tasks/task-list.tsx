@@ -324,7 +324,15 @@ export function TaskList() {
       {/* Task list */}
       <div className="flex-1 overflow-auto">
         {loading && tasks.length === 0 && (
-          <p className="text-muted-foreground text-center py-12">Loading...</p>
+          <div className="space-y-3 py-4">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-3 px-4 py-2">
+                <div className="h-5 w-5 rounded-full bg-primary/10 animate-pulse" />
+                <div className="h-4 flex-1 max-w-[400px] rounded bg-primary/10 animate-pulse" />
+                <div className="h-4 w-20 ml-auto rounded bg-primary/10 animate-pulse" />
+              </div>
+            ))}
+          </div>
         )}
 
         {!loading && tasks.length === 0 && (

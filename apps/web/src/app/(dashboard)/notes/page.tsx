@@ -209,7 +209,17 @@ export default function NotesPage() {
 
         {/* Loading / Empty states */}
         {loading && notes.length === 0 && (
-          <p className="text-muted-foreground text-center py-12">Loading...</p>
+          <div className="space-y-3 py-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="rounded-lg border border-border/50 p-4 space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className="h-4 w-32 rounded bg-primary/10 animate-pulse" />
+                  <div className="h-3 w-16 ml-auto rounded bg-primary/10 animate-pulse" />
+                </div>
+                <div className="h-3 w-3/4 rounded bg-primary/10 animate-pulse" />
+              </div>
+            ))}
+          </div>
         )}
 
         {!loading && notes.length === 0 && (

@@ -56,7 +56,15 @@ export default function BattlecardsPage() {
       </div>
 
       {loading ? (
-        <div className="text-sm text-muted-foreground">Loading...</div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="rounded-lg border border-border/50 p-4 space-y-2">
+              <div className="h-5 w-36 rounded bg-primary/10 animate-pulse" />
+              <div className="h-3 w-full rounded bg-primary/10 animate-pulse" />
+              <div className="h-3 w-2/3 rounded bg-primary/10 animate-pulse" />
+            </div>
+          ))}
+        </div>
       ) : battlecards.length === 0 ? (
         <div className="rounded-lg border border-dashed p-12 text-center">
           <Swords className="mx-auto h-12 w-12 text-muted-foreground/50" />

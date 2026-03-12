@@ -13,6 +13,7 @@ import { Popover } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { CSVImportModal } from "@/components/records/csv-import-modal";
 import { generateCSV, downloadCSV } from "@/lib/csv-utils";
+import { TablePageSkeleton } from "@/components/ui/page-skeleton";
 import {
   Plus,
   RefreshCw,
@@ -61,11 +62,7 @@ export default function ObjectPage() {
   const hasBoardView = !!statusAttr;
 
   if (loading && !object) {
-    return (
-      <div className="flex h-full items-center justify-center text-muted-foreground">
-        Loading...
-      </div>
-    );
+    return <TablePageSkeleton />;
   }
 
   if (!object) {

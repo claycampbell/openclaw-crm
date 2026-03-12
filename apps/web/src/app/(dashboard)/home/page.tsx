@@ -477,9 +477,13 @@ export default function HomePage() {
 
           <div className="divide-y divide-border/50">
             {loading && tasks.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-                <CheckSquare className="h-8 w-8 mb-2 opacity-30" />
-                <p className="text-xs">Loading tasks...</p>
+              <div className="space-y-2 p-4">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-3 py-1">
+                    <div className="h-4 w-4 rounded-full bg-primary/10 animate-pulse" />
+                    <div className="h-3 flex-1 max-w-[180px] rounded bg-primary/10 animate-pulse" />
+                  </div>
+                ))}
               </div>
             )}
             {!loading && tasks.length === 0 && (
@@ -575,9 +579,13 @@ export default function HomePage() {
 
           <div className="divide-y divide-border/50">
             {loading && notes.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-                <StickyNote className="h-8 w-8 mb-2 opacity-30" />
-                <p className="text-xs">Loading notes...</p>
+              <div className="space-y-2 p-4">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="space-y-1.5 py-1">
+                    <div className="h-3 w-28 rounded bg-primary/10 animate-pulse" />
+                    <div className="h-3 w-3/4 rounded bg-primary/10 animate-pulse" />
+                  </div>
+                ))}
               </div>
             )}
             {!loading && notes.length === 0 && (

@@ -142,7 +142,18 @@ export default function SequencesPage() {
       )}
 
       {loading ? (
-        <div className="text-sm text-muted-foreground">Loading...</div>
+        <div className="space-y-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="rounded-lg border border-border/50 p-4 space-y-2">
+              <div className="h-5 w-40 rounded bg-primary/10 animate-pulse" />
+              <div className="h-3 w-64 rounded bg-primary/10 animate-pulse" />
+              <div className="flex gap-4 pt-1">
+                <div className="h-4 w-16 rounded bg-primary/10 animate-pulse" />
+                <div className="h-4 w-16 rounded bg-primary/10 animate-pulse" />
+              </div>
+            </div>
+          ))}
+        </div>
       ) : sequences.length === 0 ? (
         <div className="rounded-lg border border-dashed p-12">
           <EmptyState

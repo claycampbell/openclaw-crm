@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { extractPersonalName } from "@/lib/display-name";
 import { NextBestActionBadge } from "@/components/analytics/NextBestActionBadge";
+import { RecordDetailSkeleton } from "@/components/ui/page-skeleton";
 
 interface ObjectData {
   id: string;
@@ -119,11 +120,7 @@ export default function RecordDetailPage() {
   }, [slug, recordId, router]);
 
   if (loading && !record) {
-    return (
-      <div className="flex h-full items-center justify-center text-muted-foreground">
-        Loading...
-      </div>
-    );
+    return <RecordDetailSkeleton />;
   }
 
   if (!object || !record) {

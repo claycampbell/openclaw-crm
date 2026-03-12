@@ -133,9 +133,14 @@ export function RecordNotes({ objectSlug, recordId }: RecordNotesProps) {
 
       {/* Notes list */}
       {loading && notes.length === 0 && (
-        <p className="text-xs text-muted-foreground py-4 text-center">
-          Loading...
-        </p>
+        <div className="space-y-2 py-2">
+          {Array.from({ length: 2 }).map((_, i) => (
+            <div key={i} className="space-y-1.5 py-1">
+              <div className="h-3 w-24 rounded bg-primary/10 animate-pulse" />
+              <div className="h-3 w-3/4 rounded bg-primary/10 animate-pulse" />
+            </div>
+          ))}
+        </div>
       )}
 
       {!loading && notes.length === 0 && !creating && (

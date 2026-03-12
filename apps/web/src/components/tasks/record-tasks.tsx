@@ -154,9 +154,14 @@ export function RecordTasks({
       </div>
 
       {loading && tasks.length === 0 && (
-        <p className="text-xs text-muted-foreground py-4 text-center">
-          Loading...
-        </p>
+        <div className="space-y-2 py-2">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-2 py-1">
+              <div className="h-4 w-4 rounded-full bg-primary/10 animate-pulse" />
+              <div className="h-3 flex-1 max-w-[200px] rounded bg-primary/10 animate-pulse" />
+            </div>
+          ))}
+        </div>
       )}
 
       {!loading && tasks.length === 0 && (
