@@ -61,7 +61,7 @@ This milestone is complete only when all are true:
 - [x] **S01: Job Execution + Signal Pipeline** `risk:high` `depends:[]`
   > After this: Background jobs execute, retry, and dead-letter correctly; deal stage changes trigger automation evaluation end-to-end — verified by E2E tests
 
-- [ ] **S02: Toast + Error Boundaries + Confirmation Dialogs** `risk:low` `depends:[]`
+- [x] **S02: Toast + Error Boundaries + Confirmation Dialogs** `risk:low` `depends:[]`
   > After this: Every mutation shows toast feedback, error boundaries catch client failures, all destructive actions use styled dialogs — no window.alert/confirm remain
 
 - [ ] **S03: Form Validation** `risk:medium` `depends:[]`
