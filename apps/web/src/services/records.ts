@@ -545,6 +545,63 @@ export async function getRecord(objectId: string, recordId: string) {
   return (await hydrateRecords(recordRows, valueRows, byId))[0];
 }
 
+/**
+ * Toggle the joint opportunity flag on a record.
+ */
+export async function flagAsJoint(recordId: string, isJoint: boolean) {
+  const [updated] = await db
+    .update(records)
+    .set({ isJoint, updatedAt: new Date() })
+    .where(eq(records.id, recordId))
+    .returning();
+  return updated ?? null;
+}
+
+/**
+ * List records flagged as joint opportunities for an object.
+ */
+export async function listJointRecords(
+  objectId: string,
+  options: { limit?: number; offset?: number } = {}
+) {
+  const { limit = 50, offset = 0 } = options;
+  const { byId } = await loadAttributes(objectId);
+
+  const whereClause = and(eq(records.objectId, objectId), eq(records.isJoint, true));
+
+  const recordRows = await db
+    .select()
+    .from(records)
+    .where(whereClause)
+    .orderBy(desc(records.createdAt))
+    .limit(limit)
+    .offset(offset);
+
+  if (recordRows.length === 0) {
+    const [countResult] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(records)
+      .where(whereClause);
+    return { records: [], total: Number(countResult.count) };
+  }
+
+  const recordIds = recordRows.map(r => r.id);
+  const valueRows = await db
+    .select()
+    .from(recordValues)
+    .where(inArray(recordValues.recordId, recordIds));
+
+  const [countResult] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(records)
+    .where(whereClause);
+
+  return {
+    records: await hydrateRecords(recordRows, valueRows, byId),
+    total: Number(countResult.count),
+  };
+}
+
 export async function createRecord(
   objectId: string,
   input: Record<string, unknown>,

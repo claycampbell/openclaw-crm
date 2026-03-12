@@ -146,8 +146,12 @@ export async function createWorkspaceWithHierarchy(
     role: "admin",
   });
 
-  // Seed standard objects for company and BU workspaces (not agency)
-  if (type !== "agency") {
+  // Seed objects based on workspace type
+  if (type === "agency") {
+    // Agencies only get Deals (for joint opportunities)
+    await seedAgencyObjects(workspace.id);
+  } else {
+    // Companies and BUs get full standard objects
     await seedWorkspaceObjects(workspace.id);
     await seedDefaultChannels(workspace.id);
   }
@@ -332,6 +336,56 @@ export async function listUserWorkspacesWithHierarchy(userId: string) {
   }
 
   return groups;
+}
+
+/** Seed only Deals object for agency workspaces (joint opportunities) */
+async function seedAgencyObjects(workspaceId: string) {
+  const dealsStdObj = STANDARD_OBJECTS.find(o => o.slug === "deals");
+  if (!dealsStdObj) return;
+
+  const [object] = await db
+    .insert(objects)
+    .values({
+      workspaceId,
+      slug: dealsStdObj.slug,
+      singularName: "Joint Opportunity",
+      pluralName: "Joint Opportunities",
+      icon: dealsStdObj.icon,
+      isSystem: true,
+    })
+    .returning();
+
+  for (let i = 0; i < dealsStdObj.attributes.length; i++) {
+    const attr = dealsStdObj.attributes[i];
+    const [attribute] = await db
+      .insert(attributes)
+      .values({
+        objectId: object.id,
+        slug: attr.slug,
+        title: attr.title,
+        type: attr.type,
+        config: attr.config || {},
+        isSystem: attr.isSystem,
+        isRequired: attr.isRequired,
+        isUnique: attr.isUnique,
+        isMultiselect: attr.isMultiselect,
+        sortOrder: i,
+      })
+      .returning();
+
+    if (attr.slug === "stage") {
+      for (const stage of DEAL_STAGES) {
+        await db.insert(statuses).values({
+          attributeId: attribute.id,
+          title: stage.title,
+          color: stage.color,
+          sortOrder: stage.sortOrder,
+          isActive: stage.isActive,
+          celebrationEnabled: stage.celebrationEnabled,
+        });
+      }
+    }
+  }
 }
 
 /** Seed standard objects (People, Companies, Deals) + attributes + deal stages for a workspace */

@@ -59,7 +59,7 @@ This milestone is complete only when all are true:
 - [x] **S03: Company Roll-Up Views & BU Scoping** `risk:medium` `depends:[S02]`
   > After this: Viewing records at Company level aggregates data from all child BUs, viewing at BU level shows only that BU's data, the query builder handles multi-workspace scoping
 
-- [ ] **S04: Intelligent Agency & Joint Opportunities** `risk:medium` `depends:[S01]`
+- [x] **S04: Intelligent Agency & Joint Opportunities** `risk:medium` `depends:[S01]`
   > After this: An Agency workspace exists with its own pipeline, deals can be created as joint opportunities with participating entities tracked via junction table, joint deals show participation info
 
 - [ ] **S05: Workspace Hierarchy UI** `risk:medium` `depends:[S02, S04]`

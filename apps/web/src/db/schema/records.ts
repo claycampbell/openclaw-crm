@@ -13,6 +13,7 @@ export const records = pgTable(
     createdBy: text("created_by").references(() => users.id, { onDelete: "set null" }),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
     sortOrder: integer("sort_order").notNull().default(0),
+    isJoint: boolean("is_joint").notNull().default(false),
   },
   (table) => [
     index("records_object_id").on(table.objectId),
