@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useObjectRecords } from "@/hooks/use-object-records";
 import { RecordTable } from "@/components/records/record-table";
@@ -56,6 +56,19 @@ export default function ObjectPage() {
   const [importOpen, setImportOpen] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
   const [sortOpen, setSortOpen] = useState(false);
+
+  const handleBulkDelete = useCallback(
+    async (ids: string[]) => {
+      if (!object) return;
+      await Promise.all(
+        ids.map((id) =>
+          fetch(`/api/v1/objects/${slug}/records/${id}`, { method: "DELETE" })
+        )
+      );
+      fetchData();
+    },
+    [object, slug, fetchData]
+  );
 
   // Auto-detect if board view is available (has a status attribute)
   const statusAttr = object?.attributes.find((a) => a.type === "status");
@@ -256,6 +269,7 @@ export default function ObjectPage() {
             records={records}
             onUpdateRecord={updateRecord}
             onCreateRecord={() => setCreateOpen(true)}
+            onDeleteRecords={handleBulkDelete}
             objectSlug={slug}
           />
         ) : (

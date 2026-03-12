@@ -28,7 +28,7 @@ export function RecordDetail({ attributes, values, onUpdate }: RecordDetailProps
   const [editingSlug, setEditingSlug] = useState<string | null>(null);
 
   return (
-    <div className="space-y-1">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-6 gap-y-0.5">
       {attributes.map((attr) => {
         const val = values[attr.slug];
         const isEditing = editingSlug === attr.slug;
@@ -39,7 +39,7 @@ export function RecordDetail({ attributes, values, onUpdate }: RecordDetailProps
             className="group flex items-start gap-2 rounded-md px-3 py-2 hover:bg-muted/30"
           >
             {/* Label */}
-            <div className="w-40 shrink-0 pt-0.5">
+            <div className="w-36 shrink-0 pt-0.5">
               <span className="text-sm text-muted-foreground">{attr.title}</span>
             </div>
 
