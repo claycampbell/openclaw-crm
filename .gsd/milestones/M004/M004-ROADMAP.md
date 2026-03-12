@@ -62,7 +62,7 @@ This milestone is complete only when all are true:
 - [x] **S04: Intelligent Agency & Joint Opportunities** `risk:medium` `depends:[S01]`
   > After this: An Agency workspace exists with its own pipeline, deals can be created as joint opportunities with participating entities tracked via junction table, joint deals show participation info
 
-- [ ] **S05: Workspace Hierarchy UI** `risk:medium` `depends:[S02, S04]`
+- [x] **S05: Workspace Hierarchy UI** `risk:medium` `depends:[S02, S04]`
   > After this: Sidebar workspace switcher displays Company → BU hierarchy, users can switch between Company-level and BU-level views, Agency workspace is accessible, create-workspace flow supports BU creation under a Company
 
 - [ ] **S06: Joint Opportunity Cross-Visibility & Integration** `risk:low` `depends:[S03, S04, S05]`

@@ -19,6 +19,8 @@ interface Workspace {
   name: string;
   slug: string;
   role: string;
+  type?: string;
+  parentWorkspaceId?: string | null;
 }
 
 function SelectWorkspaceForm() {
@@ -134,7 +136,14 @@ function SelectWorkspaceForm() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{ws.name}</p>
-                  <p className="text-xs text-muted-foreground">{ws.role}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {ws.role}
+                    {ws.type && ws.type !== "company" && (
+                      <span className="ml-1.5 inline-flex items-center rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium">
+                        {ws.type === "business_unit" ? "BU" : ws.type === "agency" ? "Agency" : ws.type}
+                      </span>
+                    )}
+                  </p>
                 </div>
               </button>
             ))}

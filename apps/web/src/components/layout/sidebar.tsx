@@ -97,6 +97,17 @@ interface Workspace {
   name: string;
   slug: string;
   role: string;
+  type?: string;
+  parentWorkspaceId?: string | null;
+}
+
+interface WorkspaceGroup {
+  type: "standalone" | "agency_group";
+  workspace: Workspace;
+  children?: Array<{
+    workspace: Workspace;
+    children?: Workspace[];
+  }>;
 }
 
 export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
@@ -104,6 +115,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const [lists, setLists] = useState<ListItem[]>([]);
   const [createOpen, setCreateOpen] = useState(false);
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
+  const [workspaceGroups, setWorkspaceGroups] = useState<WorkspaceGroup[]>([]);
   const [activeWorkspace, setActiveWorkspace] = useState<Workspace | null>(null);
   const [expanded, setExpanded] = useState(true);
   const [mounted, setMounted] = useState(false);
@@ -151,6 +163,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
       })
       .catch(() => {});
 
+    // Fetch flat list for active workspace detection
     fetch("/api/v1/workspaces")
       .then((res) => res.json())
       .then((data) => {
@@ -163,6 +176,13 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
           const active = data.data.find((ws: Workspace) => ws.id === cookieId) || data.data[0];
           if (active) setActiveWorkspace(active);
         }
+      })
+      .catch(() => {});
+    // Fetch grouped hierarchy for dropdown display
+    fetch("/api/v1/workspaces?grouped=true")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.data) setWorkspaceGroups(data.data);
       })
       .catch(() => {});
   }, []);
@@ -211,32 +231,64 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
               <DropdownMenuTrigger asChild>
                 <button className="flex flex-1 items-center gap-2.5 rounded-lg px-1.5 py-1.5 text-left hover:bg-sidebar-accent transition-colors min-w-0">
                   <LogoMark size={28} className="shrink-0" />
-                  <span className="text-sm font-medium text-foreground truncate flex-1">
-                    {activeWorkspace?.name || "Aria"}
-                  </span>
+                  <div className="flex flex-col min-w-0 flex-1">
+                    <span className="text-sm font-medium text-foreground truncate">
+                      {activeWorkspace?.name || "Aria"}
+                    </span>
+                    {activeWorkspace?.type && activeWorkspace.type !== "company" && (
+                      <span className="text-[10px] text-muted-foreground capitalize">
+                        {activeWorkspace.type === "business_unit" ? "Business Unit" : activeWorkspace.type}
+                      </span>
+                    )}
+                  </div>
                   <ChevronsUpDown className="h-3 w-3 text-muted-foreground shrink-0" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-52">
-                {workspaces.map((ws) => (
-                  <DropdownMenuItem
-                    key={ws.id}
-                    onClick={() => {
-                      if (ws.id !== activeWorkspace?.id) {
-                        switchWorkspace(ws);
-                      }
-                    }}
-                    className="flex items-center gap-2"
-                  >
-                    <div className="flex h-6 w-6 items-center justify-center rounded-md bg-foreground/5 text-xs font-semibold text-foreground shrink-0">
-                      {ws.name.charAt(0).toUpperCase()}
+              <DropdownMenuContent align="start" className="w-60">
+                {workspaceGroups.length > 0 ? (
+                  // Hierarchical display
+                  workspaceGroups.map((group, gi) => (
+                    <div key={group.workspace.id}>
+                      {gi > 0 && <DropdownMenuSeparator />}
+                      <WorkspaceSwitchItem
+                        ws={group.workspace}
+                        active={activeWorkspace?.id === group.workspace.id}
+                        onClick={() => switchWorkspace(group.workspace)}
+                        indent={0}
+                      />
+                      {group.children?.map((child) => (
+                        <div key={child.workspace.id}>
+                          <WorkspaceSwitchItem
+                            ws={child.workspace}
+                            active={activeWorkspace?.id === child.workspace.id}
+                            onClick={() => switchWorkspace(child.workspace)}
+                            indent={1}
+                          />
+                          {child.children?.map((grandchild) => (
+                            <WorkspaceSwitchItem
+                              key={grandchild.id}
+                              ws={grandchild}
+                              active={activeWorkspace?.id === grandchild.id}
+                              onClick={() => switchWorkspace(grandchild)}
+                              indent={2}
+                            />
+                          ))}
+                        </div>
+                      ))}
                     </div>
-                    <span className="truncate flex-1">{ws.name}</span>
-                    {ws.id === activeWorkspace?.id && (
-                      <Check className="h-3.5 w-3.5 text-primary shrink-0" />
-                    )}
-                  </DropdownMenuItem>
-                ))}
+                  ))
+                ) : (
+                  // Flat fallback
+                  workspaces.map((ws) => (
+                    <WorkspaceSwitchItem
+                      key={ws.id}
+                      ws={ws}
+                      active={activeWorkspace?.id === ws.id}
+                      onClick={() => switchWorkspace(ws)}
+                      indent={0}
+                    />
+                  ))
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <Link href="/select-workspace?create=true" className="flex items-center gap-2">
@@ -440,6 +492,42 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         onSubmit={handleCreateList}
       />
     </aside>
+  );
+}
+
+const TYPE_LABELS: Record<string, { label: string; color: string }> = {
+  agency: { label: "AG", color: "bg-amber-500/20 text-amber-600 dark:text-amber-400" },
+  company: { label: "CO", color: "bg-blue-500/20 text-blue-600 dark:text-blue-400" },
+  business_unit: { label: "BU", color: "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400" },
+};
+
+function WorkspaceSwitchItem({
+  ws,
+  active,
+  onClick,
+  indent = 0,
+}: {
+  ws: Workspace;
+  active: boolean;
+  onClick: () => void;
+  indent?: number;
+}) {
+  const typeInfo = TYPE_LABELS[ws.type || "company"];
+  return (
+    <DropdownMenuItem
+      onClick={() => !active && onClick()}
+      className="flex items-center gap-2"
+      style={{ paddingLeft: `${8 + indent * 16}px` }}
+    >
+      <div className={cn(
+        "flex h-5 w-5 items-center justify-center rounded text-[9px] font-bold shrink-0",
+        typeInfo?.color || "bg-foreground/5 text-foreground"
+      )}>
+        {typeInfo?.label || ws.name.charAt(0).toUpperCase()}
+      </div>
+      <span className="truncate flex-1 text-sm">{ws.name}</span>
+      {active && <Check className="h-3.5 w-3.5 text-primary shrink-0" />}
+    </DropdownMenuItem>
   );
 }
 
