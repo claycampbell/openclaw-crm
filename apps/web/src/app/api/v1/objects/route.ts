@@ -1,12 +1,15 @@
 import { NextRequest } from "next/server";
-import { getAuthContext, unauthorized, badRequest, success } from "@/lib/api-utils";
-import { listObjects, createObject } from "@/services/objects";
+import { getAuthContext, unauthorized, badRequest, success, resolveWorkspaceScope } from "@/lib/api-utils";
+import { listObjects, listObjectsAcrossWorkspaces, createObject } from "@/services/objects";
 
 export async function GET(req: NextRequest) {
   const ctx = await getAuthContext(req);
   if (!ctx) return unauthorized();
 
-  const data = await listObjects(ctx.workspaceId);
+  const scope = resolveWorkspaceScope(ctx);
+  const data = scope.length > 1
+    ? await listObjectsAcrossWorkspaces(scope)
+    : await listObjects(ctx.workspaceId);
   return success(data);
 }
 

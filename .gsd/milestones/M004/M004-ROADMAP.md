@@ -56,7 +56,7 @@ This milestone is complete only when all are true:
 - [x] **S02: Hierarchy-Aware Auth Context & Workspace Switching** `risk:high` `depends:[S01]`
   > After this: `getAuthContext()` returns workspace type and child IDs, the workspace switcher API supports hierarchy-aware switching, the cookie correctly tracks Company vs BU level context
 
-- [ ] **S03: Company Roll-Up Views & BU Scoping** `risk:medium` `depends:[S02]`
+- [x] **S03: Company Roll-Up Views & BU Scoping** `risk:medium` `depends:[S02]`
   > After this: Viewing records at Company level aggregates data from all child BUs, viewing at BU level shows only that BU's data, the query builder handles multi-workspace scoping
 
 - [ ] **S04: Intelligent Agency & Joint Opportunities** `risk:medium` `depends:[S01]`

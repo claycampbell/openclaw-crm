@@ -440,6 +440,92 @@ export async function listRecordsCursor(
   return { records: hydrated, nextCursor, hasMore };
 }
 
+/**
+ * List records across multiple objects (same slug, different workspaces).
+ * Used for company-level roll-up views that aggregate BU records.
+ * Uses the first object's attributes as the canonical schema for hydration.
+ */
+export async function listRecordsMultiObject(
+  objectIds: string[],
+  options: { limit?: number; offset?: number; filter?: FilterGroup; sorts?: SortConfig[] } = {}
+) {
+  if (objectIds.length === 0) return { records: [], total: 0 };
+  if (objectIds.length === 1) return listRecords(objectIds[0], options);
+
+  const { limit = 50, offset = 0, filter, sorts } = options;
+
+  // Use the first object's attributes as canonical schema
+  const { byId, bySlug } = await loadAttributes(objectIds[0]);
+
+  const attrMap = new Map<string, { id: string; slug: string; type: AttributeType }>();
+  for (const [slug, info] of bySlug) {
+    attrMap.set(slug, info);
+  }
+
+  // For multi-object, we also need attribute mappings from other objects
+  // so we can hydrate values correctly (attributes have different IDs per workspace)
+  const allAttrMaps = new Map<string, Map<string, { id: string; slug: string; type: AttributeType }>>();
+  for (const objId of objectIds) {
+    const { bySlug: objBySlug } = await loadAttributes(objId);
+    const map = new Map<string, { id: string; slug: string; type: AttributeType }>();
+    for (const [slug, info] of objBySlug) {
+      map.set(slug, info);
+    }
+    allAttrMaps.set(objId, map);
+  }
+
+  // Build a unified byId map across all objects (for hydration)
+  const unifiedById = new Map<string, AttributeInfo & { slug: string }>();
+  for (const objId of objectIds) {
+    const { byId: objById } = await loadAttributes(objId);
+    for (const [id, info] of objById) {
+      unifiedById.set(id, info);
+    }
+  }
+
+  // Build filter using primary object's attribute mapping
+  const filterSQL = filter ? buildFilterSQL(filter, attrMap) : undefined;
+  const sortExprs = sorts ? buildSortExpressions(sorts, attrMap) : [];
+
+  // WHERE: records belong to any of the object IDs + optional filter
+  const baseWhere = inArray(records.objectId, objectIds);
+  const whereClause = filterSQL ? and(baseWhere, filterSQL) : baseWhere;
+
+  const query = db
+    .select()
+    .from(records)
+    .where(whereClause)
+    .orderBy(...(sortExprs.length > 0 ? sortExprs : [asc(records.sortOrder), desc(records.createdAt)]))
+    .limit(limit)
+    .offset(offset);
+
+  const recordRows = await query;
+
+  if (recordRows.length === 0) {
+    const [countResult] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(records)
+      .where(whereClause);
+    return { records: [], total: Number(countResult.count) };
+  }
+
+  const recordIds = recordRows.map((r) => r.id);
+  const valueRows = await db
+    .select()
+    .from(recordValues)
+    .where(inArray(recordValues.recordId, recordIds));
+
+  const [countResult] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(records)
+    .where(whereClause);
+
+  return {
+    records: await hydrateRecords(recordRows, valueRows, unifiedById),
+    total: Number(countResult.count),
+  };
+}
+
 export async function getRecord(objectId: string, recordId: string) {
   const { byId } = await loadAttributes(objectId);
 
