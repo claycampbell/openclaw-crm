@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Settings, Users, Box, KeyRound, Bot, Puzzle, Plug, ClipboardCheck } from "lucide-react";
+import { Settings, Users, Box, KeyRound, Bot, Puzzle, Plug, ClipboardCheck, Webhook } from "lucide-react";
 
 const settingsNav = [
   { href: "/settings", label: "General", icon: Settings, exact: true },
@@ -14,6 +14,7 @@ const settingsNav = [
   { href: "/settings/aria", label: "Aria", icon: Puzzle, exact: false },
   { href: "/settings/integrations", label: "Integrations", icon: Plug, exact: false },
   { href: "/settings/approvals", label: "Approvals", icon: ClipboardCheck, exact: false },
+  { href: "/settings/webhooks", label: "Webhooks", icon: Webhook, exact: false },
 ];
 
 export default function SettingsLayout({
