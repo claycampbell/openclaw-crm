@@ -1,7 +1,7 @@
 import { db } from "@/db";
 import { workspaces, workspaceMembers, users, objects, attributes, statuses } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
-import { STANDARD_OBJECTS, DEAL_STAGES } from "@openclaw-crm/shared";
+import { eq, and, sql, isNull, inArray } from "drizzle-orm";
+import { STANDARD_OBJECTS, DEAL_STAGES, type WorkspaceType } from "@openclaw-crm/shared";
 import { seedDefaultChannels } from "./agent-channels";
 
 // ─── Workspace ───────────────────────────────────────────────────────
@@ -75,13 +75,179 @@ export async function createWorkspace(name: string, userId: string) {
   return workspace;
 }
 
-/** List all workspaces a user is a member of */
+/**
+ * Create a workspace with explicit type and optional parent.
+ * Validates hierarchy rules:
+ * - agency: no parent allowed
+ * - company: parent must be an agency (or null for standalone)
+ * - business_unit: parent must be a company
+ */
+export async function createWorkspaceWithHierarchy(
+  name: string,
+  type: WorkspaceType,
+  userId: string,
+  parentWorkspaceId?: string | null
+) {
+  // Validate hierarchy constraints
+  if (type === "agency" && parentWorkspaceId) {
+    throw new Error("Agency workspaces cannot have a parent");
+  }
+
+  if (type === "business_unit") {
+    if (!parentWorkspaceId) {
+      throw new Error("Business unit must have a parent company");
+    }
+    const parent = await getWorkspace(parentWorkspaceId);
+    if (!parent) throw new Error("Parent workspace not found");
+    if (parent.type !== "company") {
+      throw new Error("Business unit parent must be a company workspace");
+    }
+  }
+
+  if (type === "company" && parentWorkspaceId) {
+    const parent = await getWorkspace(parentWorkspaceId);
+    if (!parent) throw new Error("Parent workspace not found");
+    if (parent.type !== "agency") {
+      throw new Error("Company parent must be an agency workspace");
+    }
+  }
+
+  const slug = name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    || "workspace";
+
+  const existingSlugs = await db
+    .select({ slug: workspaces.slug })
+    .from(workspaces)
+    .where(eq(workspaces.slug, slug))
+    .limit(1);
+
+  const finalSlug = existingSlugs.length > 0
+    ? `${slug}-${crypto.randomUUID().slice(0, 8)}`
+    : slug;
+
+  const [workspace] = await db
+    .insert(workspaces)
+    .values({
+      name,
+      slug: finalSlug,
+      type,
+      parentWorkspaceId: parentWorkspaceId ?? null,
+      settings: {},
+    })
+    .returning();
+
+  // Add creator as admin
+  await db.insert(workspaceMembers).values({
+    workspaceId: workspace.id,
+    userId,
+    role: "admin",
+  });
+
+  // Seed standard objects for company and BU workspaces (not agency)
+  if (type !== "agency") {
+    await seedWorkspaceObjects(workspace.id);
+    await seedDefaultChannels(workspace.id);
+  }
+
+  return workspace;
+}
+
+/**
+ * Get workspace with its parent and direct children.
+ */
+export async function getWorkspaceWithHierarchy(workspaceId: string) {
+  const workspace = await getWorkspace(workspaceId);
+  if (!workspace) return null;
+
+  const parent = workspace.parentWorkspaceId
+    ? await getWorkspace(workspace.parentWorkspaceId)
+    : null;
+
+  const children = await db
+    .select()
+    .from(workspaces)
+    .where(eq(workspaces.parentWorkspaceId, workspaceId))
+    .orderBy(workspaces.name);
+
+  return {
+    ...workspace,
+    parent: parent ? { id: parent.id, name: parent.name, slug: parent.slug, type: parent.type } : null,
+    children: children.map(c => ({ id: c.id, name: c.name, slug: c.slug, type: c.type })),
+  };
+}
+
+/**
+ * Get all descendant workspace IDs (children + grandchildren) using recursive CTE.
+ * For a company: returns its BU IDs.
+ * For an agency: returns company IDs + their BU IDs.
+ */
+export async function getDescendantWorkspaceIds(workspaceId: string): Promise<string[]> {
+  const result = await db.execute<{ id: string }>(sql`
+    WITH RECURSIVE descendants AS (
+      SELECT id FROM workspaces WHERE parent_workspace_id = ${workspaceId}
+      UNION ALL
+      SELECT w.id FROM workspaces w
+      INNER JOIN descendants d ON w.parent_workspace_id = d.id
+    )
+    SELECT id FROM descendants
+  `);
+  return Array.from(result).map(r => r.id);
+}
+
+/**
+ * Get the full three-tier tree starting from an agency workspace.
+ * Returns agency → companies → business units structure.
+ */
+export async function getWorkspaceTree(agencyId: string) {
+  const agency = await getWorkspace(agencyId);
+  if (!agency || agency.type !== "agency") return null;
+
+  const companies = await db
+    .select()
+    .from(workspaces)
+    .where(and(eq(workspaces.parentWorkspaceId, agencyId), eq(workspaces.type, "company")))
+    .orderBy(workspaces.name);
+
+  const companyIds = companies.map(c => c.id);
+  const allBUs = companyIds.length > 0
+    ? await db
+        .select()
+        .from(workspaces)
+        .where(and(inArray(workspaces.parentWorkspaceId, companyIds), eq(workspaces.type, "business_unit")))
+        .orderBy(workspaces.name)
+    : [];
+
+  // Group BUs by parent company
+  const busByCompany = new Map<string, typeof allBUs>();
+  for (const bu of allBUs) {
+    const arr = busByCompany.get(bu.parentWorkspaceId!) ?? [];
+    arr.push(bu);
+    busByCompany.set(bu.parentWorkspaceId!, arr);
+  }
+
+  return {
+    agency: { id: agency.id, name: agency.name, slug: agency.slug, type: agency.type as "agency" },
+    companies: companies.map(c => ({
+      company: { id: c.id, name: c.name, slug: c.slug, type: c.type as "company" },
+      businessUnits: (busByCompany.get(c.id) ?? []).map(bu => ({
+        id: bu.id, name: bu.name, slug: bu.slug, type: bu.type as "business_unit",
+      })),
+    })),
+  };
+}
+
+/** List all workspaces a user is a member of (includes type + parent info) */
 export async function listUserWorkspaces(userId: string) {
   return db
     .select({
       id: workspaces.id,
       name: workspaces.name,
       slug: workspaces.slug,
+      type: workspaces.type,
+      parentWorkspaceId: workspaces.parentWorkspaceId,
       role: workspaceMembers.role,
       createdAt: workspaces.createdAt,
     })

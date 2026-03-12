@@ -27,3 +27,5 @@ export * from "./approvals";
 export * from "./contracts";
 // Outbound webhooks
 export * from "./webhooks";
+// Hierarchy & participations
+export * from "./deal-participations";

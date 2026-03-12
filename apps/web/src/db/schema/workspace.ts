@@ -1,16 +1,26 @@
-import { pgTable, text, timestamp, jsonb, pgEnum, uniqueIndex, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, jsonb, pgEnum, uniqueIndex, boolean, index } from "drizzle-orm/pg-core";
 import { users } from "./auth";
 
 export const workspaceRoleEnum = pgEnum("workspace_role", ["admin", "member"]);
+export const workspaceTypeEnum = pgEnum("workspace_type", ["agency", "company", "business_unit"]);
 
-export const workspaces = pgTable("workspaces", {
-  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-  name: text("name").notNull(),
-  slug: text("slug").notNull().unique(),
-  settings: jsonb("settings").default({}),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+export const workspaces = pgTable(
+  "workspaces",
+  {
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    name: text("name").notNull(),
+    slug: text("slug").notNull().unique(),
+    type: workspaceTypeEnum("type").notNull().default("company"),
+    parentWorkspaceId: text("parent_workspace_id").references((): any => workspaces.id, { onDelete: "cascade" }),
+    settings: jsonb("settings").default({}),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => [
+    index("workspaces_parent").on(table.parentWorkspaceId),
+    index("workspaces_type").on(table.type),
+  ]
+);
 
 export const workspaceMembers = pgTable(
   "workspace_members",

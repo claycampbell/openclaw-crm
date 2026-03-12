@@ -50,7 +50,7 @@ This milestone is complete only when all are true:
 
 ## Slices
 
-- [ ] **S01: Workspace Hierarchy Schema & Core API** `risk:high` `depends:[]`
+- [x] **S01: Workspace Hierarchy Schema & Core API** `risk:high` `depends:[]`
   > After this: Company and BU workspaces can be created via API, existing workspaces are auto-typed as 'company', parent-child relationships are stored and queryable, the migration is proven safe
 
 - [ ] **S02: Hierarchy-Aware Auth Context & Workspace Switching** `risk:high` `depends:[S01]`
