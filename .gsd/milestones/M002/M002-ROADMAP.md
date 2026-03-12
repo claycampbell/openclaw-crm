@@ -88,7 +88,7 @@ This milestone is complete only when all are true:
 - [ ] **S10: AI Asset Generation Pipeline** `risk:high` `depends:[S01]`
   > After this: Deal events trigger auto-generation of opportunity briefs, proposals, meeting prep, follow-ups, and battlecards — all with budget controls and dedup
 
-- [ ] **S11: Activity Scoring + Hot Leads** `risk:medium` `depends:[S01]`
+- [x] **S11: Activity Scoring + Hot Leads** `risk:medium` `depends:[S01]`
   > After this: Each contact/company has a composite activity score; hot leads dashboard shows top 20 by score with trend indicators
 
 - [x] **S12: Workflow Automation UI + Team Collaboration** `risk:medium` `depends:[S01]`
