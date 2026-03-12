@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { getAuthContext, unauthorized, notFound, badRequest, success } from "@/lib/api-utils";
 import { getObjectBySlug } from "@/services/objects";
-import { listRecords, createRecord } from "@/services/records";
+import { listRecords, listRecordsCursor, createRecord } from "@/services/records";
 import { handleRecordCreated } from "@/services/crm-events";
 import { scheduleEnrichment } from "@/services/integrations/linkedin";
 
@@ -44,6 +44,23 @@ export async function GET(
   if (!obj) return notFound("Object not found");
 
   const { searchParams } = new URL(req.url);
+  const cursor = searchParams.get("cursor");
+
+  // Cursor-based pagination mode
+  if (cursor !== null) {
+    const limit = Math.min(Number(searchParams.get("limit") || 50), 200);
+    const result = await listRecordsCursor(obj.id, {
+      limit,
+      cursor: cursor || null, // empty string = first page
+    });
+
+    return success({
+      records: result.records,
+      pagination: { nextCursor: result.nextCursor, hasMore: result.hasMore },
+    });
+  }
+
+  // Legacy offset-based pagination mode
   const limit = Math.min(Number(searchParams.get("limit") || 50), 200);
   const offset = Number(searchParams.get("offset") || 0);
 

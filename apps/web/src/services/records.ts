@@ -1,11 +1,12 @@
 import { db } from "@/db";
 import { records, recordValues, attributes, objects, statuses } from "@/db/schema";
-import { eq, and, inArray, desc, asc, sql, type SQL } from "drizzle-orm";
+import { eq, and, inArray, desc, asc, sql, or, gt, type SQL } from "drizzle-orm";
 import { ATTRIBUTE_TYPE_COLUMN_MAP, type AttributeType } from "@openclaw-crm/shared";
 import type { FilterGroup, SortConfig } from "@openclaw-crm/shared";
 import { extractPersonalName } from "@/lib/display-name";
 import { buildFilterSQL, buildSortExpressions } from "@/lib/query-builder";
 import { batchGetRecordDisplayNames } from "./display-names";
+import { encodeCursor, decodeCursor } from "@/lib/cursor-pagination";
 
 // ─── Types ───────────────────────────────────────────────────────────
 
@@ -345,6 +346,97 @@ export async function listRecords(
     records: await hydrateRecords(recordRows, valueRows, byId),
     total: Number(countResult.count),
   };
+}
+
+export async function listRecordsCursor(
+  objectId: string,
+  options: {
+    limit?: number;
+    cursor?: string | null;
+    filter?: FilterGroup;
+    sorts?: SortConfig[];
+  } = {}
+) {
+  const { limit = 50, cursor, filter, sorts } = options;
+
+  const { byId, bySlug } = await loadAttributes(objectId);
+
+  // Build attribute map for query builder (keyed by slug)
+  const attrMap = new Map<string, { id: string; slug: string; type: AttributeType }>();
+  for (const [slug, info] of bySlug) {
+    attrMap.set(slug, info);
+  }
+
+  // Build filter SQL
+  const filterSQL = filter ? buildFilterSQL(filter, attrMap) : undefined;
+
+  // Build sort expressions
+  const sortExprs = sorts ? buildSortExpressions(sorts, attrMap) : [];
+
+  // Combined WHERE: objectId + optional filter + cursor condition
+  const conditions: SQL[] = [eq(records.objectId, objectId)];
+  if (filterSQL) conditions.push(filterSQL);
+
+  // If cursor provided, add composite cursor condition for stable pagination
+  if (cursor) {
+    const cursorData = decodeCursor(cursor);
+    if (cursorData) {
+      const cursorDate = new Date(cursorData.createdAt);
+      // (created_at > cursorDate) OR (created_at = cursorDate AND id > cursorId)
+      conditions.push(
+        or(
+          gt(records.createdAt, cursorDate),
+          and(eq(records.createdAt, cursorDate), gt(records.id, cursorData.id))!
+        )!
+      );
+    }
+  }
+
+  const whereClause = and(...conditions);
+
+  // Request limit + 1 to detect hasMore without a COUNT query
+  const fetchLimit = limit + 1;
+
+  const query = db
+    .select()
+    .from(records)
+    .where(whereClause)
+    .orderBy(
+      ...(sortExprs.length > 0
+        ? [...sortExprs, asc(records.createdAt), asc(records.id)]
+        : [asc(records.createdAt), asc(records.id)])
+    )
+    .limit(fetchLimit);
+
+  const recordRows = await query;
+
+  const hasMore = recordRows.length > limit;
+  if (hasMore) {
+    recordRows.pop(); // Remove the extra row used for hasMore detection
+  }
+
+  if (recordRows.length === 0) {
+    return { records: [] as FlatRecord[], nextCursor: null, hasMore: false };
+  }
+
+  const recordIds = recordRows.map((r) => r.id);
+  const valueRows = await db
+    .select()
+    .from(recordValues)
+    .where(inArray(recordValues.recordId, recordIds));
+
+  const hydrated = await hydrateRecords(recordRows, valueRows, byId);
+
+  // Encode cursor from the last returned row
+  const lastRow = recordRows[recordRows.length - 1];
+  const nextCursor = hasMore
+    ? encodeCursor({
+        createdAt: lastRow.createdAt.toISOString(),
+        id: lastRow.id,
+      })
+    : null;
+
+  return { records: hydrated, nextCursor, hasMore };
 }
 
 export async function getRecord(objectId: string, recordId: string) {

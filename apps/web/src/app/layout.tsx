@@ -6,6 +6,7 @@ import { PlausibleScript } from "@/components/analytics/plausible-script";
 import { GA4Script } from "@/components/analytics/ga4-script";
 import { AmplitudeScript } from "@/components/analytics/amplitude-script";
 import { CookieConsent } from "@/components/analytics/cookie-consent";
+import { Toaster } from "@/components/ui/sonner";
 import { baseUrl } from "@/lib/base-url";
 import "./globals.css";
 
@@ -57,6 +58,7 @@ export default function RootLayout({
         <GA4Script />
         <AmplitudeScript />
         <ThemeProvider>{children}</ThemeProvider>
+        <Toaster />
         <CookieConsent />
       </body>
     </html>
