@@ -63,9 +63,9 @@ const mainNav = [
 ];
 
 const objectNav = [
-  { href: "/objects/people", label: "People", icon: Users },
-  { href: "/objects/companies", label: "Companies", icon: Building2 },
-  { href: "/objects/deals", label: "Deals", icon: Handshake },
+  { href: "/objects/people", label: "People", icon: Users, iconColor: "text-violet-500" },
+  { href: "/objects/companies", label: "Companies", icon: Building2, iconColor: "text-blue-500" },
+  { href: "/objects/deals", label: "Deals", icon: Handshake, iconColor: "text-emerald-500" },
 ];
 
 const analyticsNav = [
@@ -376,6 +376,7 @@ function NavItem({
   expanded,
   onClick,
   badge,
+  iconColor,
 }: {
   href: string;
   label: string;
@@ -384,6 +385,7 @@ function NavItem({
   expanded: boolean;
   onClick?: () => void;
   badge?: number;
+  iconColor?: string;
 }) {
   const link = (
     <Link
@@ -398,7 +400,7 @@ function NavItem({
       )}
     >
       <div className="relative shrink-0">
-        <Icon className={cn("h-4 w-4", active && "text-primary")} />
+        <Icon className={cn("h-4 w-4", iconColor || (active && "text-primary"))} />
         {badge !== undefined && !expanded && (
           <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
             {badge > 9 ? "9+" : badge}

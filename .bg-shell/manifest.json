@@ -1,14 +1,14 @@
 [
   {
-    "id": "c7849e79",
+    "id": "1dcced43",
     "label": "dev",
     "command": "cd \"C:\\Users\\ClayCampbell\\Documents\\GitHub\\openclaw-crm\" && pnpm dev 2>&1",
     "cwd": "C:\\Users\\ClayCampbell\\Documents\\GitHub\\openclaw-crm",
-    "startedAt": 1773337108681,
+    "startedAt": 1773337609756,
     "processType": "server",
     "group": null,
     "readyPattern": null,
     "readyPort": 3001,
-    "pid": 48396
+    "pid": 41136
   }
 ]

@@ -60,14 +60,19 @@ function StatCard({
   label,
   value,
   color,
+  href,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   value: string | number;
   color: string;
+  href?: string;
 }) {
-  return (
-    <Card>
+  const content = (
+    <Card className={cn(
+      "transition-all duration-150",
+      href && "cursor-pointer hover:shadow-md hover:-translate-y-0.5 hover:border-primary/20"
+    )}>
       <CardContent className="p-4 flex items-center gap-3">
         <div className={cn("rounded-lg p-2 shrink-0", color)}>
           <Icon className="h-5 w-5" />
@@ -79,6 +84,11 @@ function StatCard({
       </CardContent>
     </Card>
   );
+
+  if (href) {
+    return <a href={href} className="block">{content}</a>;
+  }
+  return content;
 }
 
 function ViewToggle({
@@ -196,9 +206,24 @@ export default function DashboardPage() {
 
       {/* Content */}
       {loading && !data ? (
-        <div className="flex items-center justify-center py-16 text-muted-foreground">
-          <RefreshCw className="h-5 w-5 animate-spin mr-2" />
-          Loading dashboard...
+        <div className="space-y-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="rounded-lg border border-border p-4 flex items-center gap-3">
+                <div className="h-9 w-9 rounded-lg bg-primary/10 animate-pulse" />
+                <div className="space-y-1.5">
+                  <div className="h-6 w-16 rounded bg-primary/10 animate-pulse" />
+                  <div className="h-3 w-20 rounded bg-primary/10 animate-pulse" />
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="grid md:grid-cols-3 gap-6">
+            <div className="rounded-lg border border-border p-6 h-48">
+              <div className="h-4 w-24 rounded bg-primary/10 animate-pulse mb-4" />
+              <div className="h-32 rounded bg-primary/10 animate-pulse" />
+            </div>
+          </div>
         </div>
       ) : (
         <>
@@ -223,24 +248,28 @@ function RepView({ data }: { data: RepData }) {
           label="Pipeline Value"
           value={formatCurrency(data.dealValueTotal)}
           color="bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"
+          href="/objects/deals"
         />
         <StatCard
           icon={TrendingUp}
           label="Open Deals"
           value={data.myDeals.length}
           color="bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400"
+          href="/objects/deals"
         />
         <StatCard
           icon={CheckSquare}
           label="Open Tasks"
           value={data.openTaskCount}
           color="bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400"
+          href="/tasks"
         />
         <StatCard
           icon={Clock}
           label="Pending Approvals"
           value={data.pendingApprovalCount}
           color="bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400"
+          href="/approvals"
         />
       </div>
 

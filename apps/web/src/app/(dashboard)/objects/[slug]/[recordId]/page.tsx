@@ -21,6 +21,7 @@ import {
 import { extractPersonalName } from "@/lib/display-name";
 import { NextBestActionBadge } from "@/components/analytics/NextBestActionBadge";
 import { RecordDetailSkeleton } from "@/components/ui/page-skeleton";
+import { Breadcrumbs } from "@/components/ui/breadcrumbs";
 
 interface ObjectData {
   id: string;
@@ -150,6 +151,13 @@ export default function RecordDetailPage() {
       <div className="flex-1 overflow-auto">
         {/* Header */}
         <div className="border-b border-border px-6 py-4">
+          <Breadcrumbs
+            items={[
+              { label: object.pluralName, href: `/objects/${slug}` },
+              { label: displayName },
+            ]}
+            className="mb-3"
+          />
           <div className="flex items-center gap-3 mb-3">
             <Link href={`/objects/${slug}`}>
               <Button variant="ghost" size="icon" className="h-7 w-7">
