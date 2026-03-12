@@ -187,7 +187,7 @@ export default function LandingPage() {
       </section>
 
       {/* Terminal demo: agent interacting with CRM */}
-      <section className="relative mx-auto max-w-5xl px-6 pb-28 sm:pb-40">
+      <section className="relative mx-auto max-w-5xl px-6 pb-16 sm:pb-24">
         <ScrollReveal>
           <div className="mx-auto max-w-4xl">
             <div className="overflow-hidden rounded-2xl border-2 border-white/[0.08] shadow-[0_12px_60px_-10px_rgba(0,0,0,0.5),0_4px_20px_-4px_rgba(0,0,0,0.3)] ring-1 ring-white/[0.06]">
@@ -207,7 +207,7 @@ export default function LandingPage() {
       </section>
 
       {/* Three differentiators */}
-      <section className="relative mx-auto max-w-5xl px-6 pb-28 sm:pb-40">
+      <section className="relative mx-auto max-w-5xl px-6 pb-16 sm:pb-24">
         <ScrollReveal>
           <p className="mb-10 text-center text-[12px] font-medium uppercase tracking-[0.12em] text-muted-foreground/50">
             Why Aria
@@ -252,8 +252,34 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Feature grid */}
+      <section className="relative mx-auto max-w-5xl px-6 pb-16 sm:pb-24">
+        <ScrollReveal>
+          <p className="mb-10 text-center text-[12px] font-medium uppercase tracking-[0.12em] text-muted-foreground/50">
+            Everything you need
+          </p>
+        </ScrollReveal>
+        <div className="grid gap-x-8 gap-y-6 sm:grid-cols-2 lg:grid-cols-3">
+          {[
+            { title: "Contacts & Companies", desc: "Track people and organizations with custom fields, notes, tasks, and activity timelines." },
+            { title: "Deal Pipeline", desc: "Kanban board and table views. Drag deals through stages. Track value and close dates." },
+            { title: "Email Sequences", desc: "Multi-step outbound campaigns with AI-personalized content per prospect." },
+            { title: "Task Management", desc: "Assign tasks to contacts and deals. Due dates, priorities, and completion tracking." },
+            { title: "Approvals & Workflows", desc: "Route content and decisions through approval chains before they go live." },
+            { title: "Full REST API", desc: "Every object, record, and action is available via API. Build automations and integrations." },
+          ].map((feat, i) => (
+            <ScrollReveal key={i} delay={i * 0.05}>
+              <div className="space-y-1.5">
+                <h4 className="text-[14px] font-medium">{feat.title}</h4>
+                <p className="text-[13px] leading-relaxed text-muted-foreground">{feat.desc}</p>
+              </div>
+            </ScrollReveal>
+          ))}
+        </div>
+      </section>
+
       {/* Secondary demo: AI inside the CRM */}
-      <section className="relative mx-auto max-w-5xl px-6 pb-28 sm:pb-40">
+      <section className="relative mx-auto max-w-5xl px-6 pb-16 sm:pb-24">
         <ScrollReveal>
           <p className="mb-10 text-center text-[12px] font-medium uppercase tracking-[0.12em] text-muted-foreground/50">
             AI inside the CRM
@@ -291,7 +317,7 @@ export default function LandingPage() {
       </section>
 
       {/* Final CTA */}
-      <section className="relative mx-auto max-w-5xl px-6 pb-28 sm:pb-40">
+      <section className="relative mx-auto max-w-5xl px-6 pb-16 sm:pb-24">
         <ScrollReveal>
           <div className="text-center">
             <p className="text-[15px] text-muted-foreground">

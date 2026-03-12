@@ -267,9 +267,15 @@ export default function HomePage() {
     }
   }
 
+  // Auto-detect completed onboarding steps based on data
+  const completedStepIds = new Set<string>();
+  if (stats.people > 0) completedStepIds.add("add-contact");
+  if (stats.deals > 0) completedStepIds.add("track-deal");
+
   // Onboarding steps that haven't been dismissed
   const visibleSteps = ONBOARDING_STEPS.filter((s) => !dismissedSteps.includes(s.id));
-  const showOnboarding = isNewUser && !onboardingDismissed && visibleSteps.length > 0;
+  const allCompleted = visibleSteps.every((s) => completedStepIds.has(s.id));
+  const showOnboarding = !onboardingDismissed && visibleSteps.length > 0 && !allCompleted;
 
   return (
     <div className="p-6 max-w-5xl space-y-8">
@@ -304,31 +310,49 @@ export default function HomePage() {
             </button>
           </div>
           <div className="grid gap-1 p-2 sm:grid-cols-2">
-            {visibleSteps.map((step) => (
-              <div
-                key={step.id}
-                className="group relative flex items-start gap-3 rounded-lg p-3 hover:bg-muted/50 transition-colors"
-              >
-                <div className={cn("mt-0.5 shrink-0", step.color)}>
-                  <step.icon className="h-5 w-5" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <Link href={step.href} className="text-sm font-medium hover:underline">
-                    {step.title}
-                  </Link>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {step.description}
-                  </p>
-                </div>
-                <button
-                  onClick={(e) => { e.stopPropagation(); dismissStep(step.id); }}
-                  className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground mt-0.5"
-                  title="Dismiss"
+            {visibleSteps.map((step) => {
+              const isCompleted = completedStepIds.has(step.id);
+              return (
+                <div
+                  key={step.id}
+                  className={cn(
+                    "group relative flex items-start gap-3 rounded-lg p-3 hover:bg-muted/50 transition-colors",
+                    isCompleted && "opacity-60"
+                  )}
                 >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            ))}
+                  <div className={cn("mt-0.5 shrink-0", isCompleted ? "text-emerald-500" : step.color)}>
+                    {isCompleted ? (
+                      <Check className="h-5 w-5" />
+                    ) : (
+                      <step.icon className="h-5 w-5" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <Link
+                      href={step.href}
+                      className={cn(
+                        "text-sm font-medium hover:underline",
+                        isCompleted && "line-through"
+                      )}
+                    >
+                      {step.title}
+                    </Link>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {isCompleted ? "Done!" : step.description}
+                    </p>
+                  </div>
+                  {!isCompleted && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); dismissStep(step.id); }}
+                      className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground mt-0.5"
+                      title="Dismiss"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </Card>
       )}
