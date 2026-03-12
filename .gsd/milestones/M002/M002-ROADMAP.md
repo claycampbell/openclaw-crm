@@ -85,7 +85,7 @@ This milestone is complete only when all are true:
 - [ ] **S09: Email Compose** `risk:medium` `depends:[S06]`
   > After this: Users can compose and send emails from record detail pages via OAuth provider API, with TipTap editor, CC/BCC, and auto-populated To field
 
-- [ ] **S10: AI Asset Generation Pipeline** `risk:high` `depends:[S01]`
+- [x] **S10: AI Asset Generation Pipeline** `risk:high` `depends:[S01]`
   > After this: Deal events trigger auto-generation of opportunity briefs, proposals, meeting prep, follow-ups, and battlecards — all with budget controls and dedup
 
 - [x] **S11: Activity Scoring + Hot Leads** `risk:medium` `depends:[S01]`
