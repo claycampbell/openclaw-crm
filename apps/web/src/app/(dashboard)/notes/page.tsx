@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ChooseRecordDialog } from "@/components/records/choose-record-dialog";
+import { EmptyState } from "@/components/ui/empty-state";
 import { NoteEditorPanel } from "@/components/notes/note-editor-panel";
 import { isToday, isYesterday, isThisWeek, format } from "date-fns";
 
@@ -212,13 +213,13 @@ export default function NotesPage() {
         )}
 
         {!loading && notes.length === 0 && (
-          <div className="text-center py-12">
-            <StickyNote className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
-            <p className="text-muted-foreground">No notes yet.</p>
-            <p className="text-sm text-muted-foreground/60 mt-1">
-              Click &quot;+ New note&quot; to create your first note.
-            </p>
-          </div>
+          <EmptyState
+            icon={StickyNote}
+            title="No notes yet"
+            description="Create your first note to capture details about your contacts and deals."
+            actionLabel="New note"
+            onAction={() => setChooseRecordOpen(true)}
+          />
         )}
 
         {/* Date-grouped notes */}

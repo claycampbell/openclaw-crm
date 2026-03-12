@@ -27,6 +27,7 @@ import {
   Sparkles,
   X,
 } from "lucide-react";
+import { EmptyState } from "@/components/ui/empty-state";
 
 interface Task {
   id: string;
@@ -482,21 +483,12 @@ export default function HomePage() {
               </div>
             )}
             {!loading && tasks.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-                <CheckSquare className="h-8 w-8 mb-2 opacity-30" />
-                <p className="text-xs">No tasks yet</p>
-                <p className="text-xs mt-1">
-                  Create one from any{" "}
-                  <Link href="/objects/people" className="text-primary hover:underline">
-                    contact
-                  </Link>
-                  {" "}or{" "}
-                  <Link href="/objects/deals" className="text-primary hover:underline">
-                    deal
-                  </Link>
-                  {" "}page
-                </p>
-              </div>
+              <EmptyState
+                icon={CheckSquare}
+                title="No tasks yet"
+                description="Create one from any contact or deal page."
+                compact
+              />
             )}
             {tasks.map((task) => {
               const isOverdue =
@@ -589,17 +581,12 @@ export default function HomePage() {
               </div>
             )}
             {!loading && notes.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-                <StickyNote className="h-8 w-8 mb-2 opacity-30" />
-                <p className="text-xs">No notes yet</p>
-                <p className="text-xs mt-1">
-                  Open a{" "}
-                  <Link href="/objects/people" className="text-primary hover:underline">
-                    contact
-                  </Link>
-                  {" "}to write your first note
-                </p>
-              </div>
+              <EmptyState
+                icon={StickyNote}
+                title="No notes yet"
+                description="Open a contact to write your first note."
+                compact
+              />
             )}
             {notes.map((note) => (
               <Link

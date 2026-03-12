@@ -13,9 +13,11 @@ import {
   ArrowUpDown,
   ChevronDown,
   ChevronRight,
+  CheckSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TaskDialog } from "./task-dialog";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   isToday,
   isTomorrow,
@@ -326,15 +328,13 @@ export function TaskList() {
         )}
 
         {!loading && tasks.length === 0 && (
-          <div className="text-center py-12 space-y-2">
-            <p className="text-muted-foreground">
-              No tasks yet! Create your first task to get started.
-            </p>
-            <Button size="sm" variant="outline" onClick={openCreateDialog}>
-              <Plus className="mr-1 h-4 w-4" />
-              New task
-            </Button>
-          </div>
+          <EmptyState
+            icon={CheckSquare}
+            title="No tasks yet"
+            description="Create your first task to get started."
+            actionLabel="New task"
+            onAction={openCreateDialog}
+          />
         )}
 
         {visibleGroups.map((groupKey) => {

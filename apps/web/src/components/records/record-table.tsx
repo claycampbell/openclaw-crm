@@ -12,7 +12,8 @@ import type { AttributeType } from "@openclaw-crm/shared";
 import { AttributeCell } from "./attribute-cell";
 import { AttributeEditor } from "./attribute-editor";
 import { cn } from "@/lib/utils";
-import { Plus, ExternalLink } from "lucide-react";
+import { Plus, ExternalLink, FileSpreadsheet } from "lucide-react";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 
 // ─── Types ───────────────────────────────────────────────────────────
@@ -134,7 +135,7 @@ export function RecordTable({
                 {headerGroup.headers.map((header) => (
                   <th
                     key={header.id}
-                    className="h-9 px-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground"
+                    className="h-9 px-3 text-left text-xs font-medium text-muted-foreground"
                     style={{ width: header.getSize() }}
                   >
                     {flexRender(header.column.columnDef.header, header.getContext())}
@@ -162,11 +163,15 @@ export function RecordTable({
             ))}
             {records.length === 0 && (
               <tr>
-                <td
-                  colSpan={attributes.length}
-                  className="h-32 text-center text-muted-foreground"
-                >
-                  No records yet. Click the button below to create one.
+                <td colSpan={attributes.length}>
+                  <EmptyState
+                    icon={FileSpreadsheet}
+                    title="No records yet"
+                    description="Create your first record to get started."
+                    actionLabel="New record"
+                    onAction={onCreateRecord}
+                    compact
+                  />
                 </td>
               </tr>
             )}

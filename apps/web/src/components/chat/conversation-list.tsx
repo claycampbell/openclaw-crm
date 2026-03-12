@@ -3,6 +3,7 @@
 import { cn } from "@/lib/utils";
 import { MessageSquare, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 
 interface Conversation {
   id: string;
@@ -41,9 +42,12 @@ export function ConversationList({
 
       <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
         {conversations.length === 0 && (
-          <p className="px-3 py-8 text-center text-sm text-muted-foreground">
-            No conversations yet
-          </p>
+          <EmptyState
+            icon={MessageSquare}
+            title="No conversations"
+            description="Start a new chat to ask questions about your data."
+            compact
+          />
         )}
         {conversations.map((conv) => (
           <div

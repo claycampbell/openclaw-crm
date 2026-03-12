@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Mail, Plus, Play, Pause, BarChart2, Trash2, Archive } from "lucide-react";
+import { EmptyState } from "@/components/ui/empty-state";
 
 interface Sequence {
   id: string;
@@ -143,20 +144,14 @@ export default function SequencesPage() {
       {loading ? (
         <div className="text-sm text-muted-foreground">Loading...</div>
       ) : sequences.length === 0 ? (
-        <div className="rounded-lg border border-dashed p-12 text-center">
-          <Mail className="mx-auto h-12 w-12 text-muted-foreground/50" />
-          <h3 className="mt-4 text-lg font-medium">No sequences yet</h3>
-          <p className="mt-2 text-sm text-muted-foreground max-w-md mx-auto">
-            Create your first email sequence to automate outbound outreach.
-            AI will personalize each step based on prospect context.
-          </p>
-          <button
-            onClick={() => setShowCreate(true)}
-            className="mt-4 inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-          >
-            <Plus className="h-4 w-4" />
-            Create Sequence
-          </button>
+        <div className="rounded-lg border border-dashed p-12">
+          <EmptyState
+            icon={Mail}
+            title="No sequences yet"
+            description="Create your first email sequence to automate outbound outreach. AI will personalize each step based on prospect context."
+            actionLabel="Create sequence"
+            onAction={() => setShowCreate(true)}
+          />
         </div>
       ) : (
         <div className="space-y-3">

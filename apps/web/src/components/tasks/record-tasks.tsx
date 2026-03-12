@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Plus, Check, Circle, Calendar } from "lucide-react";
+import { Plus, Check, Circle, Calendar, CheckSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TaskDialog } from "./task-dialog";
+import { EmptyState } from "@/components/ui/empty-state";
 import { isToday, isTomorrow, differenceInDays, format } from "date-fns";
 
 interface Task {
@@ -159,9 +160,12 @@ export function RecordTasks({
       )}
 
       {!loading && tasks.length === 0 && (
-        <p className="text-xs text-muted-foreground py-4 text-center">
-          No tasks yet
-        </p>
+        <EmptyState
+          icon={CheckSquare}
+          title="No tasks yet"
+          description="Add a task to track your work."
+          compact
+        />
       )}
 
       <div className="space-y-1">

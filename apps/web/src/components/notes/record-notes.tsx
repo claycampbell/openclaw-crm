@@ -4,8 +4,9 @@ import { useState, useEffect, useCallback } from "react";
 import { NoteEditor } from "./note-editor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Trash2, ChevronDown, ChevronRight } from "lucide-react";
+import { Plus, Trash2, ChevronDown, ChevronRight, StickyNote } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { EmptyState } from "@/components/ui/empty-state";
 
 interface Note {
   id: string;
@@ -138,9 +139,12 @@ export function RecordNotes({ objectSlug, recordId }: RecordNotesProps) {
       )}
 
       {!loading && notes.length === 0 && !creating && (
-        <p className="text-xs text-muted-foreground py-4 text-center">
-          No notes yet
-        </p>
+        <EmptyState
+          icon={StickyNote}
+          title="No notes yet"
+          description="Add a note to capture details."
+          compact
+        />
       )}
 
       <div className="space-y-2">
