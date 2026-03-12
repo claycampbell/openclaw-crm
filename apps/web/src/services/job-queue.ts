@@ -86,7 +86,7 @@ export async function processJobs(batchSize: number = 10): Promise<number> {
     RETURNING *
   `);
 
-  const jobs = claimed.rows as Array<{
+  const jobs = (claimed as unknown as { rows: unknown[] }).rows as Array<{
     id: string;
     type: string;
     payload: Record<string, unknown> | null;

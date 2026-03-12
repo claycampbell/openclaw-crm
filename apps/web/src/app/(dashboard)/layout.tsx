@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
 import { CommandPalette } from "@/components/layout/command-palette";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 export default function DashboardLayout({
   children,
@@ -18,6 +19,7 @@ export default function DashboardLayout({
   const handleNavigation = () => setSidebarOpen(false);
 
   return (
+    <TooltipProvider delayDuration={0}>
     <div className="flex h-screen overflow-hidden">
       {/* Mobile overlay */}
       {sidebarOpen && (
@@ -44,5 +46,6 @@ export default function DashboardLayout({
 
       <CommandPalette />
     </div>
+    </TooltipProvider>
   );
 }

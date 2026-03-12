@@ -11,6 +11,7 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:seed": "tsx src/db/seed.ts",
+    "db:seed-vivid": "tsx src/db/seed-vivid.ts",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui"
   },

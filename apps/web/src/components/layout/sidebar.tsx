@@ -41,6 +41,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useTheme } from "next-themes";
 import { LogoMark } from "@/components/brand/logo";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const mainNav = [
   { href: "/home", label: "Home", icon: Home },
@@ -213,41 +218,62 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
       </div>
 
       {/* Main navigation */}
-      <nav className="flex-1 space-y-0.5 px-2 py-2 overflow-y-auto">
-        {mainNav.map((item) => (
-          <NavItem
-            key={item.href}
-            {...item}
-            active={pathname === item.href}
-            expanded={expanded}
-            onClick={onNavigate}
-            badge={item.href === "/inbox" && inboxCount > 0 ? inboxCount : undefined}
-          />
-        ))}
+      <nav className="flex-1 px-2 py-2 overflow-y-auto">
+        {expanded && (
+          <div className="px-2.5 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+            Core
+          </div>
+        )}
+        <div className="space-y-0.5">
+          {mainNav.map((item) => (
+            <NavItem
+              key={item.href}
+              {...item}
+              active={pathname === item.href}
+              expanded={expanded}
+              onClick={onNavigate}
+              badge={item.href === "/inbox" && inboxCount > 0 ? inboxCount : undefined}
+            />
+          ))}
+        </div>
 
         <div className="my-3 mx-2 h-px bg-sidebar-border" />
 
-        {objectNav.map((item) => (
-          <NavItem
-            key={item.href}
-            {...item}
-            active={pathname.startsWith(item.href)}
-            expanded={expanded}
-            onClick={onNavigate}
-          />
-        ))}
+        {expanded && (
+          <div className="px-2.5 pb-1 pt-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+            Records
+          </div>
+        )}
+        <div className="space-y-0.5">
+          {objectNav.map((item) => (
+            <NavItem
+              key={item.href}
+              {...item}
+              active={pathname.startsWith(item.href)}
+              expanded={expanded}
+              onClick={onNavigate}
+            />
+          ))}
+        </div>
 
         <div className="my-3 mx-2 h-px bg-sidebar-border" />
 
-        {analyticsNav.map((item) => (
-          <NavItem
-            key={item.href}
-            {...item}
-            active={pathname.startsWith(item.href)}
-            expanded={expanded}
-            onClick={onNavigate}
-          />
-        ))}
+        {expanded && (
+          <div className="px-2.5 pb-1 pt-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+            Analytics
+          </div>
+        )}
+        <div className="space-y-0.5">
+          {analyticsNav.map((item) => (
+            <NavItem
+              key={item.href}
+              {...item}
+              active={pathname.startsWith(item.href)}
+              expanded={expanded}
+              onClick={onNavigate}
+            />
+          ))}
+        </div>
 
         {expanded && lists.length > 0 && (
           <>
@@ -300,20 +326,37 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         ))}
 
         {/* Theme toggle */}
-        <button
-          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          className={cn(
-            "flex w-full items-center rounded-lg py-1.5 text-sm transition-colors text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-            expanded ? "gap-2.5 px-2.5" : "justify-center px-0"
-          )}
-        >
-          {theme === "dark" ? (
-            <Sun className="h-4 w-4 shrink-0" />
-          ) : (
-            <Moon className="h-4 w-4 shrink-0" />
-          )}
-          {expanded && <span>{theme === "dark" ? "Light mode" : "Dark mode"}</span>}
-        </button>
+        {expanded ? (
+          <button
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          >
+            {theme === "dark" ? (
+              <Sun className="h-4 w-4 shrink-0" />
+            ) : (
+              <Moon className="h-4 w-4 shrink-0" />
+            )}
+            <span>{theme === "dark" ? "Light mode" : "Dark mode"}</span>
+          </button>
+        ) : (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                className="flex w-full items-center justify-center rounded-lg py-1.5 text-sm transition-colors text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+              >
+                {theme === "dark" ? (
+                  <Sun className="h-4 w-4 shrink-0" />
+                ) : (
+                  <Moon className="h-4 w-4 shrink-0" />
+                )}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="font-medium">
+              {theme === "dark" ? "Light mode" : "Dark mode"}
+            </TooltipContent>
+          </Tooltip>
+        )}
       </div>
 
       <CreateListModal
@@ -342,21 +385,20 @@ function NavItem({
   onClick?: () => void;
   badge?: number;
 }) {
-  return (
+  const link = (
     <Link
       href={href}
       onClick={onClick}
-      title={!expanded ? label : undefined}
       className={cn(
         "flex items-center rounded-lg py-1.5 text-sm transition-colors",
         expanded ? "gap-2.5 px-2.5" : "justify-center px-0",
         active
-          ? "bg-sidebar-accent text-sidebar-accent-foreground"
+          ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
           : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
       )}
     >
       <div className="relative shrink-0">
-        <Icon className="h-4 w-4" />
+        <Icon className={cn("h-4 w-4", active && "text-primary")} />
         {badge !== undefined && !expanded && (
           <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
             {badge > 9 ? "9+" : badge}
@@ -374,5 +416,16 @@ function NavItem({
         </>
       )}
     </Link>
+  );
+
+  if (expanded) return link;
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{link}</TooltipTrigger>
+      <TooltipContent side="right" className="font-medium">
+        {label}
+      </TooltipContent>
+    </Tooltip>
   );
 }

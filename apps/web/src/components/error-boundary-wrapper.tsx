@@ -8,13 +8,15 @@ function ErrorFallback({
   error,
   resetErrorBoundary,
 }: {
-  error: Error;
+  error: unknown;
   resetErrorBoundary: () => void;
 }) {
+  const message =
+    error instanceof Error ? error.message : "An unexpected error occurred";
   return (
     <div className="flex flex-col items-center justify-center gap-4 p-8 text-center">
       <h2 className="text-lg font-semibold">Something went wrong</h2>
-      <p className="text-sm text-muted-foreground max-w-md">{error.message}</p>
+      <p className="text-sm text-muted-foreground max-w-md">{message}</p>
       <Button onClick={resetErrorBoundary} variant="outline">
         Try again
       </Button>
@@ -31,7 +33,8 @@ export function ErrorBoundaryWrapper({
     <ErrorBoundary
       FallbackComponent={ErrorFallback}
       onError={(error) => {
-        toast.error("An error occurred", { description: error.message });
+        const msg = error instanceof Error ? error.message : String(error);
+        toast.error("An error occurred", { description: msg });
       }}
     >
       {children}
