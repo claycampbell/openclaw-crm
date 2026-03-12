@@ -96,5 +96,13 @@ export async function DELETE(
   const deleted = await deleteRecord(obj.id, recordId);
   if (!deleted) return notFound("Record not found");
 
+  // Dispatch webhook for record deletion (non-blocking)
+  import("@/services/webhook-delivery").then(({ dispatchWebhookEvent }) => {
+    dispatchWebhookEvent(ctx.workspaceId, "record.deleted", {
+      recordId,
+      objectSlug: slug,
+    }).catch(() => {});
+  });
+
   return success({ id: deleted.id, deleted: true });
 }

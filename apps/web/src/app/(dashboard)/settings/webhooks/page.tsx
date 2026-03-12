@@ -27,6 +27,7 @@ import {
   CheckCircle2,
   XCircle,
   Copy,
+  Zap,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -215,6 +216,26 @@ export default function WebhooksSettingsPage() {
     toast.success("URL copied");
   };
 
+  const handleTest = async (wh: WebhookItem) => {
+    toast.info(`Sending test ping to ${wh.name}...`);
+    try {
+      const res = await fetch(`/api/v1/webhooks/${wh.id}/test`, { method: "POST" });
+      if (res.ok) {
+        const result = await res.json();
+        const d = result.data;
+        if (d.success) {
+          toast.success(`Test succeeded — HTTP ${d.status} in ${d.responseTimeMs}ms`);
+        } else {
+          toast.error(`Test failed — ${d.statusText} (${d.responseTimeMs}ms)`);
+        }
+      } else {
+        toast.error("Failed to send test");
+      }
+    } catch {
+      toast.error("Failed to send test");
+    }
+  };
+
   if (loading) return <ListPageSkeleton />;
 
   return (
@@ -282,6 +303,14 @@ export default function WebhooksSettingsPage() {
 
                 <div className="flex items-center gap-2 shrink-0">
                   <Switch checked={wh.enabled} onCheckedChange={() => handleToggle(wh)} />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleTest(wh)}
+                    title="Send test ping"
+                  >
+                    <Zap className="h-4 w-4 text-amber-500" />
+                  </Button>
                   <Button variant="ghost" size="icon" onClick={() => openEdit(wh)}>
                     <Pencil className="h-4 w-4" />
                   </Button>
