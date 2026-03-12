@@ -70,7 +70,7 @@ This milestone is complete only when all are true:
 - [x] **S04: Cursor Pagination + Virtual Scroll** `risk:medium` `depends:[]`
   > After this: Record tables load via cursor-based pagination and support virtual scrolling through 1000+ records without DOM degradation
 
-- [ ] **S05: E2E Tests for UX Polish** `risk:low` `depends:[S02,S03,S04]`
+- [x] **S05: E2E Tests for UX Polish** `risk:low` `depends:[S02,S03,S04]`
   > After this: Playwright E2E tests verify toast notifications, form validation, pagination, and dialog behavior across the UX polish slices
 
 - [ ] **S06: Gmail + Outlook Delta Sync** `risk:high` `depends:[S01]`
@@ -97,7 +97,7 @@ This milestone is complete only when all are true:
 - [x] **S13: Import/Export + Outbound Webhooks** `risk:low` `depends:[S01]`
   > After this: CSV import with field mapping and dedup; CSV export with EAV flattening; outbound webhooks with HMAC signing and retry
 
-- [ ] **S14: Analytics Real Calculations** `risk:medium` `depends:[S10]`
+- [x] **S14: Analytics Real Calculations** `risk:medium` `depends:[S10]`
   > After this: Win/loss patterns, rep coaching, pipeline forecast, and next-best-action all use real calculations with AI narrative — not stubs
 
 ## Boundary Map
