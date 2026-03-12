@@ -1,6 +1,7 @@
 import { getOrCreateChannel, postAgentMessage } from "./agent-channels";
 import { triggerCloseFlow, isClosedWonStage } from "./close-flow";
 import { evaluateDealForApproval } from "./approvals";
+import { dispatchWebhookEvent } from "./webhook-delivery";
 
 // Handle a record being created — Aria posts to the relevant channel
 export async function handleRecordCreated(params: {
@@ -46,6 +47,14 @@ export async function handleRecordCreated(params: {
     }
 
     await postAgentMessage(conversationId, message, "Aria");
+
+    // Dispatch to outbound webhooks
+    dispatchWebhookEvent(workspaceId, "record.created", {
+      recordId: params.recordId,
+      objectSlug,
+      objectSingularName: params.objectSingularName,
+      recordSummary,
+    }).catch(() => {});
   } catch {
     // Never throw — this is fire-and-forget
   }
@@ -100,7 +109,24 @@ export async function handleRecordUpdated(params: {
           requestedBy: userId,
         }).catch(() => {});
       }
+
+      // Dispatch stage-specific webhook
+      dispatchWebhookEvent(workspaceId, "deal.stage_changed", {
+        recordId: params.recordId,
+        objectSlug,
+        recordSummary,
+        newStage,
+      }).catch(() => {});
     }
+
+    // Dispatch generic record.updated webhook
+    dispatchWebhookEvent(workspaceId, "record.updated", {
+      recordId: params.recordId,
+      objectSlug,
+      objectSingularName: params.objectSingularName,
+      recordSummary,
+      changedFields,
+    }).catch(() => {});
   } catch {
     // Never throw — this is fire-and-forget
   }

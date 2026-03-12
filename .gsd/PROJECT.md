@@ -36,6 +36,8 @@ See `.gsd/REQUIREMENTS.md` for the explicit capability contract, requirement sta
 
 - [x] M001: v1.0 Foundation — Core CRM with records, pipeline, AI chat, sequences, approvals, contracts, dashboards, analytics stubs
 - [ ] M002: v2.0 Complete & Polish — Wire up stubs, UX polish, email compose, workflow automation, activity scoring, collaboration, import/export, webhooks, analytics
+- [x] M003: UI Design & UX Polish — 7 slices of frontend refinement
+- [ ] M004: Company / BU Hierarchy & Intelligent Agency — Two-level workspace hierarchy (Company → Business Units), roll-up views, Intelligent Agency for cross-entity joint opportunities
 
 ---
 *Last updated: 2026-03-12 — migrated from .planning/*

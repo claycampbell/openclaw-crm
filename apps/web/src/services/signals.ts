@@ -7,6 +7,7 @@
 import { db } from "@/db";
 import { signalEvents, processedSignals } from "@/db/schema";
 import { enqueueJob } from "@/services/job-queue";
+import { dispatchWebhookEvent } from "@/services/webhook-delivery";
 
 export interface SignalEventInput {
   workspaceId: string;
@@ -35,6 +36,16 @@ export async function writeSignalEvent(input: SignalEventInput): Promise<string>
   // Auto-enqueue signal evaluation so automation rules fire
   await enqueueJob("signal_evaluate", { signalEventId: event.id }, {
     workspaceId: input.workspaceId,
+  });
+
+  // Dispatch to outbound webhooks (non-blocking, non-throwing)
+  dispatchWebhookEvent(input.workspaceId, input.type, {
+    signalEventId: event.id,
+    recordId: input.recordId ?? null,
+    provider: input.provider ?? null,
+    ...(input.payload ?? {}),
+  }).catch((err) => {
+    console.error("[signals] Webhook dispatch error:", err);
   });
 
   return event.id;
