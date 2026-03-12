@@ -9,6 +9,8 @@
 
 import { db } from "@/db";
 import { records, recordValues, objects, attributes, workspaceMembers } from "@/db/schema";
+import { users } from "@/db/schema/auth";
+import { tasks } from "@/db/schema/tasks";
 import { approvalRequests } from "@/db/schema/approvals";
 import { generatedAssets } from "@/db/schema/generated-assets";
 import { eq, and, inArray, sql, desc, count } from "drizzle-orm";
@@ -366,9 +368,18 @@ export async function getManagerDashboard(workspaceId: string): Promise<ManagerD
   const memberIds = members.map((m) => m.userId);
   const taskCountRows: { created_by: string; cnt: number }[] =
     memberIds.length > 0
-      ? Array.from(await db.execute(
-          sql`SELECT created_by, count(*)::int AS cnt FROM tasks WHERE workspace_id = ${workspaceId} AND created_by = ANY(${memberIds}) AND is_completed = false GROUP BY created_by`
-        )) as { created_by: string; cnt: number }[]
+      ? (await db
+          .select({ created_by: tasks.createdBy, cnt: count() })
+          .from(tasks)
+          .where(
+            and(
+              eq(tasks.workspaceId, workspaceId),
+              inArray(tasks.createdBy, memberIds),
+              eq(tasks.isCompleted, false)
+            )
+          )
+          .groupBy(tasks.createdBy)
+        ).map((r) => ({ created_by: r.created_by ?? "", cnt: Number(r.cnt) }))
       : [];
 
   const taskCountByUser = new Map<string, number>();
@@ -390,9 +401,11 @@ export async function getManagerDashboard(workspaceId: string): Promise<ManagerD
   // Build team metrics — need user names from auth
   const userDataRows: { id: string; name: string; email: string }[] =
     memberIds.length > 0
-      ? Array.from(await db.execute(
-          sql`SELECT id, name, email FROM "user" WHERE id = ANY(${memberIds})`
-        )) as { id: string; name: string; email: string }[]
+      ? (await db
+          .select({ id: users.id, name: users.name, email: users.email })
+          .from(users)
+          .where(inArray(users.id, memberIds))
+        )
       : [];
 
   const userMap = new Map<string, { name: string; email: string }>();
