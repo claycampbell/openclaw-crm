@@ -37,6 +37,9 @@ export default function ObjectPage() {
     records,
     total,
     loading,
+    loadingMore,
+    hasMore,
+    loadMore,
     fetchData,
     updateRecord,
     createRecord,
@@ -278,6 +281,9 @@ export default function ObjectPage() {
             onCreateRecord={() => setCreateOpen(true)}
             onDeleteRecords={handleBulkDelete}
             objectSlug={slug}
+            hasMore={hasMore}
+            loadingMore={loadingMore}
+            onLoadMore={loadMore}
           />
         ) : (
           <RecordKanban

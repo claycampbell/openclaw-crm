@@ -64,7 +64,7 @@ This milestone is complete only when all are true:
 - [x] **S02: Toast + Error Boundaries + Confirmation Dialogs** `risk:low` `depends:[]`
   > After this: Every mutation shows toast feedback, error boundaries catch client failures, all destructive actions use styled dialogs — no window.alert/confirm remain
 
-- [ ] **S03: Form Validation** `risk:medium` `depends:[]`
+- [x] **S03: Form Validation** `risk:medium` `depends:[]`
   > After this: All create/edit record forms show inline field-level validation errors before submission, with dynamic EAV-to-Zod schema generation
 
 - [ ] **S04: Cursor Pagination + Virtual Scroll** `risk:medium` `depends:[]`

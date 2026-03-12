@@ -41,6 +41,9 @@ interface RecordTableProps {
   onCreateRecord: () => void;
   onDeleteRecords?: (ids: string[]) => void;
   objectSlug: string;
+  hasMore?: boolean;
+  loadingMore?: boolean;
+  onLoadMore?: () => void;
 }
 
 // ─── Component ───────────────────────────────────────────────────────
@@ -52,6 +55,9 @@ export function RecordTable({
   onCreateRecord,
   onDeleteRecords,
   objectSlug,
+  hasMore,
+  loadingMore,
+  onLoadMore,
 }: RecordTableProps) {
   const router = useRouter();
   const [editingCell, setEditingCell] = useState<{ rowId: string; colId: string } | null>(null);
@@ -242,6 +248,21 @@ export function RecordTable({
           </tbody>
         </table>
       </div>
+
+      {/* Load more */}
+      {hasMore && (
+        <div className="border-t border-border flex items-center justify-center py-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onLoadMore}
+            disabled={loadingMore}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            {loadingMore ? "Loading..." : "Load more records"}
+          </Button>
+        </div>
+      )}
 
       {/* Add record row */}
       <div className="border-t border-border p-2">
