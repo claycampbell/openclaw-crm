@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
 import { CommandPalette } from "@/components/layout/command-palette";
+import { KeyboardShortcuts } from "@/components/layout/keyboard-shortcuts";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 export default function DashboardLayout({
@@ -45,6 +46,7 @@ export default function DashboardLayout({
       </div>
 
       <CommandPalette />
+      <KeyboardShortcuts />
     </div>
     </TooltipProvider>
   );
