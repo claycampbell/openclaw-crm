@@ -27,6 +27,12 @@ function LoginForm() {
       const data = await res.json();
       const workspaces = data.data || [];
 
+      // If redirecting to an invite page, go there directly (invite page handles workspace join)
+      if (redirectTo.startsWith("/invite/")) {
+        router.push(redirectTo);
+        return;
+      }
+
       if (workspaces.length === 0) {
         // No workspaces — create one
         router.push("/select-workspace");

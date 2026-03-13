@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const publicPaths = ["/login", "/register", "/api/auth", "/docs", "/blog", "/compare"];
-const workspaceSetupPaths = ["/select-workspace", "/api/v1/workspaces"];
+const publicPaths = ["/login", "/register", "/api/auth", "/docs", "/blog", "/compare", "/invite"];
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -24,8 +23,12 @@ export function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // Allow public API spec endpoints and SEO files without auth
-  if (pathname === "/openapi.json" || pathname === "/llms.txt" || pathname === "/llms-api.txt" || pathname === "/llms-full.txt" || pathname === "/robots.txt" || pathname === "/sitemap.xml") {
+  // Allow public API spec endpoints, SEO files, and invite info without auth
+  if (
+    pathname === "/openapi.json" || pathname === "/llms.txt" || pathname === "/llms-api.txt" ||
+    pathname === "/llms-full.txt" || pathname === "/robots.txt" || pathname === "/sitemap.xml" ||
+    (pathname.startsWith("/api/v1/invites/") && pathname.endsWith("/info"))
+  ) {
     return NextResponse.next();
   }
 
@@ -41,6 +44,7 @@ export function middleware(req: NextRequest) {
   }
 
   // Allow workspace setup paths (need auth but no active workspace)
+  const workspaceSetupPaths = ["/select-workspace", "/api/v1/workspaces"];
   if (workspaceSetupPaths.some((p) => pathname.startsWith(p))) {
     return NextResponse.next();
   }

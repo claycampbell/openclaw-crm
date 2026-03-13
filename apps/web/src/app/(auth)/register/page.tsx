@@ -1,20 +1,48 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { signUp } from "@/lib/auth-client";
 import { trackEvent } from "@/lib/analytics";
 import { Logo } from "@/components/brand/logo";
+import { Building2 } from "lucide-react";
 
-export default function RegisterPage() {
+interface InviteInfo {
+  workspaceName: string;
+  email: string;
+  role: string;
+}
+
+function RegisterForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const inviteToken = searchParams.get("invite");
+
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [workspaceName, setWorkspaceName] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [inviteInfo, setInviteInfo] = useState<InviteInfo | null>(null);
+  const [loadingInvite, setLoadingInvite] = useState(!!inviteToken);
+
+  // Fetch invite details if token is present
+  useEffect(() => {
+    if (!inviteToken) return;
+    fetch(`/api/v1/invites/${inviteToken}/info`)
+      .then(async (res) => {
+        if (res.ok) {
+          const data = await res.json();
+          setInviteInfo(data.data);
+          setEmail(data.data.email);
+        }
+      })
+      .finally(() => setLoadingInvite(false));
+  }, [inviteToken]);
+
+  const isInviteFlow = !!inviteToken && !!inviteInfo;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -36,26 +64,47 @@ export default function RegisterPage() {
 
       if (result.error) {
         setError(result.error.message || "Registration failed");
+        setLoading(false);
         return;
       }
 
-      // Create workspace for the new user
-      const wsName = workspaceName.trim() || `${name}'s Workspace`;
-      const wsRes = await fetch("/api/v1/workspaces", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: wsName }),
-      });
+      if (isInviteFlow) {
+        // Accept the invite — this adds the user to the workspace
+        const acceptRes = await fetch(`/api/v1/invites/${inviteToken}/accept`, {
+          method: "POST",
+        });
 
-      if (!wsRes.ok) {
-        // User was created but workspace creation failed — send to workspace selection
-        router.push("/select-workspace");
-        return;
+        if (acceptRes.ok) {
+          const acceptData = await acceptRes.json();
+          // Switch to the workspace
+          await fetch("/api/v1/workspaces/switch", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ workspaceId: acceptData.data.workspaceId }),
+          });
+          trackEvent("signup_completed_via_invite");
+          router.push("/home");
+        } else {
+          // Invite accept failed — send to workspace selection
+          router.push("/select-workspace");
+        }
+      } else {
+        // Standard flow — create a new workspace
+        const wsName = workspaceName.trim() || `${name}'s Workspace`;
+        const wsRes = await fetch("/api/v1/workspaces", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: wsName }),
+        });
+
+        if (!wsRes.ok) {
+          router.push("/select-workspace");
+          return;
+        }
+
+        trackEvent("signup_completed");
+        router.push("/home");
       }
-
-      // Cookie is set by the POST /api/v1/workspaces response, redirect to home
-      trackEvent("signup_completed");
-      router.push("/home");
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {
@@ -66,16 +115,40 @@ export default function RegisterPage() {
   const inputClass =
     "flex h-10 w-full rounded-xl border border-foreground/8 dark:border-white/[0.06] bg-background/60 dark:bg-white/[0.04] px-4 text-[14px] text-foreground placeholder:text-muted-foreground/40 outline-none transition-colors focus:border-foreground/20 dark:focus:border-white/15 focus:ring-0";
 
+  if (loadingInvite) {
+    return (
+      <div className="rounded-2xl border border-foreground/[0.06] dark:border-white/[0.06] bg-foreground/[0.015] dark:bg-white/[0.02] px-8 py-8">
+        <div className="flex items-center justify-center py-12">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-foreground/20 border-t-foreground" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="rounded-2xl border border-foreground/[0.06] dark:border-white/[0.06] bg-foreground/[0.015] dark:bg-white/[0.02] px-8 py-8">
       <div className="text-center mb-6">
         <div className="flex justify-center mb-4">
           <Logo size="lg" />
         </div>
-        <h1 className="text-title-4">Create an account</h1>
-        <p className="text-body-sm text-muted-foreground/70 mt-1.5">
-          Get started with your CRM
-        </p>
+        {isInviteFlow ? (
+          <>
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
+              <Building2 className="h-6 w-6 text-primary" />
+            </div>
+            <h1 className="text-title-4">Join {inviteInfo.workspaceName}</h1>
+            <p className="text-body-sm text-muted-foreground/70 mt-1.5">
+              Create your account to get started
+            </p>
+          </>
+        ) : (
+          <>
+            <h1 className="text-title-4">Create an account</h1>
+            <p className="text-body-sm text-muted-foreground/70 mt-1.5">
+              Get started with your CRM
+            </p>
+          </>
+        )}
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -95,6 +168,7 @@ export default function RegisterPage() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
+            autoFocus
             className={inputClass}
           />
         </div>
@@ -109,8 +183,14 @@ export default function RegisterPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className={inputClass}
+            readOnly={isInviteFlow}
+            className={`${inputClass} ${isInviteFlow ? "opacity-60 cursor-not-allowed" : ""}`}
           />
+          {isInviteFlow && (
+            <p className="text-caption text-muted-foreground/50">
+              This email is tied to your invite
+            </p>
+          )}
         </div>
         <div className="space-y-1.5">
           <label
@@ -130,41 +210,60 @@ export default function RegisterPage() {
             className={inputClass}
           />
         </div>
-        <div className="space-y-1.5">
-          <label
-            htmlFor="workspace-name"
-            className="text-label text-muted-foreground"
-          >
-            Workspace name
-          </label>
-          <input
-            id="workspace-name"
-            type="text"
-            placeholder={name ? `${name}'s Workspace` : "My Workspace"}
-            value={workspaceName}
-            onChange={(e) => setWorkspaceName(e.target.value)}
-            className={inputClass}
-          />
-          <p className="text-caption">Leave blank to use your name</p>
-        </div>
+
+        {/* Only show workspace name field when NOT joining via invite */}
+        {!isInviteFlow && (
+          <div className="space-y-1.5">
+            <label
+              htmlFor="workspace-name"
+              className="text-label text-muted-foreground"
+            >
+              Workspace name
+            </label>
+            <input
+              id="workspace-name"
+              type="text"
+              placeholder={name ? `${name}'s Workspace` : "My Workspace"}
+              value={workspaceName}
+              onChange={(e) => setWorkspaceName(e.target.value)}
+              className={inputClass}
+            />
+            <p className="text-caption">Leave blank to use your name</p>
+          </div>
+        )}
+
         <button
           type="submit"
           disabled={loading}
           className="w-full rounded-full bg-foreground py-2.5 text-[13px] font-medium text-background shadow-[0_1px_4px_rgba(0,0,0,0.1),0_0px_1px_rgba(0,0,0,0.06)] transition-all hover:opacity-80 hover:shadow-[0_2px_8px_rgba(0,0,0,0.15)] disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {loading ? "Creating account..." : "Create account"}
+          {loading
+            ? isInviteFlow
+              ? "Joining..."
+              : "Creating account..."
+            : isInviteFlow
+              ? `Join ${inviteInfo.workspaceName}`
+              : "Create account"}
         </button>
       </form>
 
       <p className="mt-6 text-center text-[13px] text-muted-foreground/60">
         Already have an account?{" "}
         <Link
-          href="/login"
+          href={isInviteFlow ? `/login?redirect=/invite/${inviteToken}` : "/login"}
           className="text-foreground transition-colors hover:underline"
         >
           Sign in
         </Link>
       </p>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense>
+      <RegisterForm />
+    </Suspense>
   );
 }
