@@ -88,3 +88,8 @@ vendor/
 coverage/
 .cache/
 tmp/
+
+# DB migration artifacts
+.gsd/db-backups/*.dump
+.gsd/db-backups/full-schema.sql
+.gsd/db-backups/gen-migration.js
