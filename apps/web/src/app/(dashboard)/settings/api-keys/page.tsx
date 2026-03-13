@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -76,10 +77,13 @@ export default function ApiKeysPage() {
         setRevealedKey(data.data.key);
         setNewName("");
         setShowCreate(false);
+        toast.success("API key created");
         fetchKeys();
       } else {
         const data = await res.json();
-        setError(data.error?.message ?? "Failed to create API key");
+        const msg = data.error?.message ?? "Failed to create API key";
+        setError(msg);
+        toast.error(msg);
       }
     } finally {
       setCreating(false);
@@ -96,9 +100,12 @@ export default function ApiKeysPage() {
       if (res.ok) {
         setKeys((prev) => prev.filter((k) => k.id !== revokeTarget.id));
         setRevokeTarget(null);
+        toast.success("API key revoked");
       } else {
         const data = await res.json();
-        setError(data.error?.message ?? "Failed to revoke API key");
+        const msg = data.error?.message ?? "Failed to revoke API key";
+        setError(msg);
+        toast.error(msg);
       }
     } finally {
       setRevoking(false);

@@ -1,11 +1,11 @@
 /**
- * Job queue helper (stub for Phase 1 infrastructure).
- * Enqueues background jobs into the background_jobs table.
+ * Job queue helper — typed wrapper around services/job-queue.ts.
+ * Preserves the (workspaceId, type, payload) signature used by
+ * automation-engine.ts while delegating to the canonical implementation.
  */
-import { db } from "@/db";
-import { backgroundJobs } from "@/db/schema";
+import { enqueueJob as serviceEnqueueJob } from "@/services/job-queue";
 
-export type JobType = "ai_generate" | "lead_score" | "email_send" | "meeting_prep";
+export type JobType = "ai_generate" | "lead_score" | "email_send" | "meeting_prep" | "signal_evaluate";
 
 export interface AiGeneratePayload {
   documentType: "opportunity_brief" | "proposal" | "deck" | "meeting_prep" | "followup" | "battlecard" | "sequence_step";
@@ -28,7 +28,11 @@ export interface EmailSendPayload {
   stepSendId: string;
 }
 
-export type JobPayload = AiGeneratePayload | LeadScorePayload | EmailSendPayload;
+export interface SignalEvaluatePayload {
+  signalEventId: string;
+}
+
+export type JobPayload = AiGeneratePayload | LeadScorePayload | EmailSendPayload | SignalEvaluatePayload;
 
 export async function enqueueJob(
   workspaceId: string,
@@ -36,11 +40,8 @@ export async function enqueueJob(
   payload: JobPayload,
   runAt?: Date
 ): Promise<void> {
-  await db.insert(backgroundJobs).values({
+  await serviceEnqueueJob(type, payload as unknown as Record<string, unknown>, {
     workspaceId,
-    type,
-    status: "pending",
-    payload: payload as unknown as Record<string, unknown>,
-    runAt: runAt ?? new Date(),
+    runAt,
   });
 }

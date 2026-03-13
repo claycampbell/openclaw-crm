@@ -20,19 +20,42 @@ OpenClaw CRM is a free, open-source, self-hosted CRM built for AI-native workflo
 
 ## What It Does
 
+### Core CRM
 - **People & Companies**: manage contacts and organizations with 17 attribute types
 - **Deals & Pipeline**: drag-and-drop Kanban boards with customizable stages
 - **Tasks & Notes**: linked to any record with rich text editing and deadlines
 - **Lists**: curated collections with list-specific custom attributes
-- **Search**: full-text search across all records
+- **Search**: full-text search across all records with Ctrl+K command palette
 - **Custom Objects**: create your own entity types beyond People, Companies, and Deals
-- **AI Chat Agent**: talk to your CRM data in plain English via OpenRouter (Claude, GPT-4o, Llama, Gemini)
-- **CSV Import/Export**: bulk data import with column mapping
+- **CSV Import/Export**: bulk data import with column mapping; export flattens EAV to columns
+- **Form Validation**: dynamic EAV-to-Zod schema generation with inline errors
 - **Dark & Light Mode**: full theme support
+- **Responsive**: mobile-friendly with click-to-toggle collapsible sidebar
+
+### Sales Intelligence
+- **Dashboard**: Pipeline view (rep/manager/leadership) + analytics (Win/Loss, Rep Coaching, Forecast) in tabs
+- **Hot Leads**: Activity-scored contacts ranked by engagement
+- **Sequences**: Email outreach sequences with enrollment
+- **Battlecards**: Competitive intelligence cards
+- **Close**: Contracts (SOW, NDA, MSA generation) + Handoff briefs in tabs
+
+### Reviews
+- **AI Drafts**: AI-generated documents awaiting review
+- **Approvals**: Configurable approval rules and requests
+
+### Automation & Webhooks
+- **Automation Rules**: 6 trigger types × 6 action types with conditional logic
+- **Outbound Webhooks**: HMAC-SHA256 signed delivery, auto-disable after failures, test ping
+- **Background Jobs**: Concurrent-safe queue with retry and dead-letter
+
+### AI Chat Agent
+- Talk to your CRM data in plain English via OpenRouter (Claude, GPT-4o, Llama, Gemini)
+- 8 read tools (auto-execute) + 5 write tools (require confirmation)
+- AI asset generation: briefs, proposals, meeting prep, follow-ups, battlecards
 
 ## OpenClaw Bot Integration
 
-Generate a SKILL.md and config from Settings > OpenClaw, drop them into your OpenClaw Bot's skills folder, and your agent can manage your CRM through natural language. 40+ API endpoints, bearer token auth, machine-readable docs.
+Generate a SKILL.md and config from Settings > Aria, drop them into your OpenClaw Bot's skills folder, and your agent can manage your CRM through natural language. 100+ API endpoints, bearer token auth, machine-readable docs.
 
 ## Tech Stack
 
@@ -40,7 +63,7 @@ Next.js 15 (App Router), TypeScript, PostgreSQL 16, Drizzle ORM, Better Auth, sh
 
 ## API
 
-Full REST API at `/api/v1/` with Bearer token authentication (`oc_sk_` prefix).
+Full REST API at `/api/v1/` with Bearer token authentication (`oc_sk_` prefix). 100+ endpoints.
 
 - Concise API reference: https://openclaw-crm.402box.io/llms-api.txt
 - Full product + API docs: https://openclaw-crm.402box.io/llms-full.txt

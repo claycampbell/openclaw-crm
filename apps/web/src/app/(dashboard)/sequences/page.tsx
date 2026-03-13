@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { toast } from "sonner";
 import { Mail, Plus, Play, Pause, BarChart2, Trash2, Archive } from "lucide-react";
+import { EmptyState } from "@/components/ui/empty-state";
 
 interface Sequence {
   id: string;
@@ -54,10 +56,13 @@ export default function SequencesPage() {
         setNewName("");
         setNewDesc("");
         setShowCreate(false);
+        toast.success("Sequence created");
         fetchSequences();
+      } else {
+        toast.error("Failed to create sequence");
       }
     } catch (err) {
-      console.error("Failed to create sequence:", err);
+      toast.error("Failed to create sequence");
     } finally {
       setCreating(false);
     }
@@ -65,23 +70,27 @@ export default function SequencesPage() {
 
   const handleArchive = async (id: string) => {
     try {
-      await fetch(`/api/v1/sequences/${id}`, {
+      const res = await fetch(`/api/v1/sequences/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "archived" }),
       });
+      if (!res.ok) { toast.error("Failed to archive sequence"); return; }
+      toast.success("Sequence archived");
       fetchSequences();
-    } catch (err) {
-      console.error("Failed to archive sequence:", err);
+    } catch {
+      toast.error("Failed to archive sequence");
     }
   };
 
   const handleDelete = async (id: string) => {
     try {
-      await fetch(`/api/v1/sequences/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/v1/sequences/${id}`, { method: "DELETE" });
+      if (!res.ok) { toast.error("Failed to delete sequence"); return; }
+      toast.success("Sequence deleted");
       fetchSequences();
-    } catch (err) {
-      console.error("Failed to delete sequence:", err);
+    } catch {
+      toast.error("Failed to delete sequence");
     }
   };
 
@@ -141,22 +150,27 @@ export default function SequencesPage() {
       )}
 
       {loading ? (
-        <div className="text-sm text-muted-foreground">Loading...</div>
+        <div className="space-y-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="rounded-lg border border-border/50 p-4 space-y-2">
+              <div className="h-5 w-40 rounded bg-primary/10 animate-pulse" />
+              <div className="h-3 w-64 rounded bg-primary/10 animate-pulse" />
+              <div className="flex gap-4 pt-1">
+                <div className="h-4 w-16 rounded bg-primary/10 animate-pulse" />
+                <div className="h-4 w-16 rounded bg-primary/10 animate-pulse" />
+              </div>
+            </div>
+          ))}
+        </div>
       ) : sequences.length === 0 ? (
-        <div className="rounded-lg border border-dashed p-12 text-center">
-          <Mail className="mx-auto h-12 w-12 text-muted-foreground/50" />
-          <h3 className="mt-4 text-lg font-medium">No sequences yet</h3>
-          <p className="mt-2 text-sm text-muted-foreground max-w-md mx-auto">
-            Create your first email sequence to automate outbound outreach.
-            AI will personalize each step based on prospect context.
-          </p>
-          <button
-            onClick={() => setShowCreate(true)}
-            className="mt-4 inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-          >
-            <Plus className="h-4 w-4" />
-            Create Sequence
-          </button>
+        <div className="rounded-lg border border-dashed p-12">
+          <EmptyState
+            icon={Mail}
+            title="No sequences yet"
+            description="Create your first email sequence to automate outbound outreach. AI will personalize each step based on prospect context."
+            actionLabel="Create sequence"
+            onAction={() => setShowCreate(true)}
+          />
         </div>
       ) : (
         <div className="space-y-3">

@@ -15,6 +15,7 @@ import {
   Plus,
   Settings,
 } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 
@@ -264,7 +265,8 @@ export default function ApprovalsPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ note }),
     });
-    if (res.ok) await loadRequests();
+    if (res.ok) { toast.success("Approved"); await loadRequests(); }
+    else toast.error("Failed to approve");
   }
 
   async function handleReject(id: string, note?: string) {
@@ -273,7 +275,8 @@ export default function ApprovalsPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ note }),
     });
-    if (res.ok) await loadRequests();
+    if (res.ok) { toast.success("Rejected"); await loadRequests(); }
+    else toast.error("Failed to reject");
   }
 
   const pendingCount = requests.filter((r) => r.status === "pending").length;

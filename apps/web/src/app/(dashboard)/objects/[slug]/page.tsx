@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useObjectRecords } from "@/hooks/use-object-records";
 import { RecordTable } from "@/components/records/record-table";
@@ -13,6 +13,7 @@ import { Popover } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { CSVImportModal } from "@/components/records/csv-import-modal";
 import { generateCSV, downloadCSV } from "@/lib/csv-utils";
+import { TablePageSkeleton } from "@/components/ui/page-skeleton";
 import {
   Plus,
   RefreshCw,
@@ -23,6 +24,7 @@ import {
   Download,
   Upload,
 } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 export default function ObjectPage() {
@@ -35,6 +37,9 @@ export default function ObjectPage() {
     records,
     total,
     loading,
+    loadingMore,
+    hasMore,
+    loadMore,
     fetchData,
     updateRecord,
     createRecord,
@@ -56,16 +61,31 @@ export default function ObjectPage() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [sortOpen, setSortOpen] = useState(false);
 
+  const handleBulkDelete = useCallback(
+    async (ids: string[]) => {
+      if (!object) return;
+      const results = await Promise.all(
+        ids.map((id) =>
+          fetch(`/api/v1/objects/${slug}/records/${id}`, { method: "DELETE" })
+        )
+      );
+      const failed = results.filter((r) => !r.ok).length;
+      if (failed > 0) {
+        toast.error(`Failed to delete ${failed} record${failed > 1 ? "s" : ""}`);
+      } else {
+        toast.success(`Deleted ${ids.length} record${ids.length > 1 ? "s" : ""}`);
+      }
+      fetchData();
+    },
+    [object, slug, fetchData]
+  );
+
   // Auto-detect if board view is available (has a status attribute)
   const statusAttr = object?.attributes.find((a) => a.type === "status");
   const hasBoardView = !!statusAttr;
 
   if (loading && !object) {
-    return (
-      <div className="flex h-full items-center justify-center text-muted-foreground">
-        Loading...
-      </div>
-    );
+    return <TablePageSkeleton />;
   }
 
   if (!object) {
@@ -259,7 +279,11 @@ export default function ObjectPage() {
             records={records}
             onUpdateRecord={updateRecord}
             onCreateRecord={() => setCreateOpen(true)}
+            onDeleteRecords={handleBulkDelete}
             objectSlug={slug}
+            hasMore={hasMore}
+            loadingMore={loadingMore}
+            onLoadMore={loadMore}
           />
         ) : (
           <RecordKanban

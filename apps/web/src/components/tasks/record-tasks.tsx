@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Plus, Check, Circle, Calendar } from "lucide-react";
+import { Plus, Check, Circle, Calendar, CheckSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TaskDialog } from "./task-dialog";
+import { EmptyState } from "@/components/ui/empty-state";
 import { isToday, isTomorrow, differenceInDays, format } from "date-fns";
 
 interface Task {
@@ -85,11 +87,12 @@ export function RecordTasks({
         t.id === taskId ? { ...t, isCompleted: !isCompleted } : t
       )
     );
-    await fetch(`/api/v1/tasks/${taskId}`, {
+    const res = await fetch(`/api/v1/tasks/${taskId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ isCompleted: !isCompleted }),
     });
+    if (!res.ok) toast.error("Failed to update task");
   }
 
   function openCreateDialog() {
@@ -116,21 +119,25 @@ export function RecordTasks({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-      if (!res.ok) throw new Error("Failed to create task");
+      if (!res.ok) { toast.error("Failed to create task"); return; }
+      toast.success("Task created");
     } else if (editingTask) {
       const res = await fetch(`/api/v1/tasks/${editingTask.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-      if (!res.ok) throw new Error("Failed to update task");
+      if (!res.ok) { toast.error("Failed to update task"); return; }
+      toast.success("Task updated");
     }
     fetchTasks();
   }
 
   async function handleDelete() {
     if (!editingTask) return;
-    await fetch(`/api/v1/tasks/${editingTask.id}`, { method: "DELETE" });
+    const res = await fetch(`/api/v1/tasks/${editingTask.id}`, { method: "DELETE" });
+    if (!res.ok) { toast.error("Failed to delete task"); return; }
+    toast.success("Task deleted");
     fetchTasks();
   }
 
@@ -153,15 +160,23 @@ export function RecordTasks({
       </div>
 
       {loading && tasks.length === 0 && (
-        <p className="text-xs text-muted-foreground py-4 text-center">
-          Loading...
-        </p>
+        <div className="space-y-2 py-2">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-2 py-1">
+              <div className="h-4 w-4 rounded-full bg-primary/10 animate-pulse" />
+              <div className="h-3 flex-1 max-w-[200px] rounded bg-primary/10 animate-pulse" />
+            </div>
+          ))}
+        </div>
       )}
 
       {!loading && tasks.length === 0 && (
-        <p className="text-xs text-muted-foreground py-4 text-center">
-          No tasks yet
-        </p>
+        <EmptyState
+          icon={CheckSquare}
+          title="No tasks yet"
+          description="Add a task to track your work."
+          compact
+        />
       )}
 
       <div className="space-y-1">

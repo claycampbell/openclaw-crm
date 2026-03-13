@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { objects, attributes, selectOptions, statuses } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 
 export async function listObjects(workspaceId: string) {
   return db
@@ -64,6 +64,40 @@ export async function getObjectWithAttributes(workspaceId: string, slug: string)
   );
 
   return { ...obj, attributes: attrsWithOptions };
+}
+
+/**
+ * Find objects with matching slug across multiple workspaces.
+ * Returns all matching objects (one per workspace that has that slug).
+ */
+export async function getObjectsBySlugAcrossWorkspaces(workspaceIds: string[], slug: string) {
+  if (workspaceIds.length === 0) return [];
+  return db
+    .select()
+    .from(objects)
+    .where(and(inArray(objects.workspaceId, workspaceIds), eq(objects.slug, slug)));
+}
+
+/**
+ * List objects across multiple workspaces, deduplicated by slug.
+ * When the same slug exists in multiple workspaces, keeps the first one found
+ * (primary workspace's version preferred — pass primary workspace first in the array).
+ */
+export async function listObjectsAcrossWorkspaces(workspaceIds: string[]) {
+  if (workspaceIds.length === 0) return [];
+  const all = await db
+    .select()
+    .from(objects)
+    .where(inArray(objects.workspaceId, workspaceIds))
+    .orderBy(objects.createdAt);
+
+  // Deduplicate by slug, preferring earlier entries (primary workspace should be first)
+  const seen = new Set<string>();
+  return all.filter(obj => {
+    if (seen.has(obj.slug)) return false;
+    seen.add(obj.slug);
+    return true;
+  });
 }
 
 export async function createObject(

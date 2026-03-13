@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -68,8 +69,11 @@ export function AssetCard({ asset, recordName, onApproved, onRejected }: AssetCa
     try {
       const res = await fetch(`/api/v1/assets/${asset.id}/approve`, { method: "POST" });
       if (res.ok) {
+        toast.success("Asset approved");
         setDialogOpen(false);
         onApproved(asset.id);
+      } else {
+        toast.error("Failed to approve");
       }
     } finally {
       setActionLoading(null);
@@ -81,8 +85,11 @@ export function AssetCard({ asset, recordName, onApproved, onRejected }: AssetCa
     try {
       const res = await fetch(`/api/v1/assets/${asset.id}/reject`, { method: "POST" });
       if (res.ok) {
+        toast.success("Asset rejected");
         setDialogOpen(false);
         onRejected(asset.id);
+      } else {
+        toast.error("Failed to reject");
       }
     } finally {
       setActionLoading(null);

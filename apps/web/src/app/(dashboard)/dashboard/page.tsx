@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, lazy, Suspense } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PipelineTable, type DealRow } from "@/components/dashboard/pipeline-table";
@@ -16,9 +16,36 @@ import {
   FileCheck,
   Inbox,
   RefreshCw,
+  UserCheck,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+// Lazy wrappers that fetch their own data
+function AnalyticsLoader({ endpoint, children }: { endpoint: string; children: (data: Record<string, unknown>) => React.ReactNode }) {
+  const [data, setData] = useState<Record<string, unknown> | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch(endpoint)
+      .then((res) => {
+        if (!res.ok) throw new Error(res.status === 403 ? "Analytics is available to workspace admins only." : "Failed to load");
+        return res.json();
+      })
+      .then((json) => setData(json.data))
+      .catch((err) => setError(err.message));
+  }, [endpoint]);
+
+  if (error) return <div className="flex items-center justify-center py-16 text-muted-foreground"><p>{error}</p></div>;
+  if (!data) return <div className="flex items-center justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
+  return <>{children(data)}</>;
+}
+
+const WinLossPatterns = lazy(() => import("@/components/analytics/WinLossPatterns").then(m => ({ default: m.WinLossPatterns })));
+const RepCoachingCards = lazy(() => import("@/components/analytics/RepCoachingCards").then(m => ({ default: m.RepCoachingCards })));
+const ForecastView = lazy(() => import("@/components/analytics/ForecastView").then(m => ({ default: m.ForecastView })));
+
+type DashboardSection = "pipeline" | "win-loss" | "coaching" | "forecast";
 type DashboardView = "rep" | "manager" | "leadership";
 
 interface RepData {
@@ -49,10 +76,11 @@ interface LeadershipData {
   topDeals: DealRow[];
 }
 
-function formatCurrency(value: number): string {
-  if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
-  if (value >= 1_000) return `$${(value / 1_000).toFixed(0)}K`;
-  return `$${value.toFixed(0)}`;
+function formatCurrency(value: number | null | undefined): string {
+  const v = value ?? 0;
+  if (v >= 1_000_000) return `$${(v / 1_000_000).toFixed(1)}M`;
+  if (v >= 1_000) return `$${(v / 1_000).toFixed(0)}K`;
+  return `$${v.toFixed(0)}`;
 }
 
 function StatCard({
@@ -60,14 +88,19 @@ function StatCard({
   label,
   value,
   color,
+  href,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   value: string | number;
   color: string;
+  href?: string;
 }) {
-  return (
-    <Card>
+  const content = (
+    <Card className={cn(
+      "transition-all duration-150",
+      href && "cursor-pointer hover:shadow-md hover:-translate-y-0.5 hover:border-primary/20"
+    )}>
       <CardContent className="p-4 flex items-center gap-3">
         <div className={cn("rounded-lg p-2 shrink-0", color)}>
           <Icon className="h-5 w-5" />
@@ -79,6 +112,11 @@ function StatCard({
       </CardContent>
     </Card>
   );
+
+  if (href) {
+    return <a href={href} className="block">{content}</a>;
+  }
+  return content;
 }
 
 function ViewToggle({
@@ -122,6 +160,7 @@ function ViewToggle({
 }
 
 export default function DashboardPage() {
+  const [section, setSection] = useState<DashboardSection>("pipeline");
   const [view, setView] = useState<DashboardView>("rep");
   const [data, setData] = useState<RepData | ManagerData | LeadershipData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -160,51 +199,134 @@ export default function DashboardPage() {
 
   async function handleViewChange(newView: DashboardView) {
     setView(newView);
+    setData(null); // Clear stale data to prevent type mismatch crash
     // Save preference
-    await fetch("/api/v1/dashboard/preferences", {
+    fetch("/api/v1/dashboard/preferences", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ view: newView }),
     });
   }
 
+  const sectionTabs: { id: DashboardSection; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+    { id: "pipeline", label: "Pipeline", icon: TrendingUp },
+    { id: "win-loss", label: "Win/Loss", icon: BarChart2 },
+    { id: "coaching", label: "Rep Coaching", icon: UserCheck },
+    { id: "forecast", label: "Forecast", icon: DollarSign },
+  ];
+
   return (
     <div className="p-6 max-w-7xl space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">Pipeline Dashboard</h1>
+          <h1 className="text-2xl font-semibold">Dashboard</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            {view === "rep" && "Your personal pipeline and activity"}
-            {view === "manager" && "Team pipeline overview and rep metrics"}
-            {view === "leadership" && "Executive pipeline summary and forecasting"}
+            {section === "pipeline" && view === "rep" && "Your personal pipeline and activity"}
+            {section === "pipeline" && view === "manager" && "Team pipeline overview and rep metrics"}
+            {section === "pipeline" && view === "leadership" && "Executive pipeline summary and forecasting"}
+            {section === "win-loss" && "Win/loss analysis and deal patterns"}
+            {section === "coaching" && "Rep performance coaching insights"}
+            {section === "forecast" && "Pipeline forecast and revenue projections"}
           </p>
         </div>
 
         <div className="flex items-center gap-3">
-          <ViewToggle view={view} isAdmin={isAdmin} onChange={handleViewChange} />
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => loadDashboard(view)}
-            disabled={loading}
-          >
-            <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
-          </Button>
+          {section === "pipeline" && (
+            <ViewToggle view={view} isAdmin={isAdmin} onChange={handleViewChange} />
+          )}
+          {section === "pipeline" && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => loadDashboard(view)}
+              disabled={loading}
+            >
+              <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
+            </Button>
+          )}
         </div>
       </div>
 
+      {/* Section tabs */}
+      <div className="flex items-center gap-1 border-b border-border">
+        {sectionTabs.map(({ id, label, icon: Icon }) => (
+          <button
+            key={id}
+            onClick={() => setSection(id)}
+            className={cn(
+              "flex items-center gap-1.5 px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px",
+              section === id
+                ? "border-primary text-foreground"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <Icon className="h-3.5 w-3.5" />
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* Analytics sections */}
+      {section === "win-loss" && (
+        <AnalyticsLoader endpoint="/api/v1/analytics/win-loss">
+          {(data) => (
+            <Suspense fallback={<div className="flex items-center justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>}>
+              <WinLossPatterns initialData={data as never} />
+            </Suspense>
+          )}
+        </AnalyticsLoader>
+      )}
+      {section === "coaching" && (
+        <AnalyticsLoader endpoint="/api/v1/analytics/rep-coaching">
+          {(data) => (
+            <Suspense fallback={<div className="flex items-center justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>}>
+              <RepCoachingCards report={data as never} />
+            </Suspense>
+          )}
+        </AnalyticsLoader>
+      )}
+      {section === "forecast" && (
+        <AnalyticsLoader endpoint="/api/v1/analytics/forecast">
+          {(data) => (
+            <Suspense fallback={<div className="flex items-center justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>}>
+              <ForecastView forecast={data as never} />
+            </Suspense>
+          )}
+        </AnalyticsLoader>
+      )}
+
+      {/* Pipeline content */}
+      {section === "pipeline" && (
+        <>
       {/* Content */}
       {loading && !data ? (
-        <div className="flex items-center justify-center py-16 text-muted-foreground">
-          <RefreshCw className="h-5 w-5 animate-spin mr-2" />
-          Loading dashboard...
+        <div className="space-y-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="rounded-lg border border-border p-4 flex items-center gap-3">
+                <div className="h-9 w-9 rounded-lg bg-primary/10 animate-pulse" />
+                <div className="space-y-1.5">
+                  <div className="h-6 w-16 rounded bg-primary/10 animate-pulse" />
+                  <div className="h-3 w-20 rounded bg-primary/10 animate-pulse" />
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="grid md:grid-cols-3 gap-6">
+            <div className="rounded-lg border border-border p-6 h-48">
+              <div className="h-4 w-24 rounded bg-primary/10 animate-pulse mb-4" />
+              <div className="h-32 rounded bg-primary/10 animate-pulse" />
+            </div>
+          </div>
         </div>
       ) : (
         <>
           {view === "rep" && data && <RepView data={data as RepData} />}
           {view === "manager" && data && <ManagerView data={data as ManagerData} />}
           {view === "leadership" && data && <LeadershipView data={data as LeadershipData} />}
+        </>
+      )}
         </>
       )}
     </div>
@@ -223,24 +345,28 @@ function RepView({ data }: { data: RepData }) {
           label="Pipeline Value"
           value={formatCurrency(data.dealValueTotal)}
           color="bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"
+          href="/objects/deals"
         />
         <StatCard
           icon={TrendingUp}
           label="Open Deals"
           value={data.myDeals.length}
           color="bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400"
+          href="/objects/deals"
         />
         <StatCard
           icon={CheckSquare}
           label="Open Tasks"
           value={data.openTaskCount}
           color="bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400"
+          href="/tasks"
         />
         <StatCard
           icon={Clock}
           label="Pending Approvals"
           value={data.pendingApprovalCount}
           color="bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400"
+          href="/approvals"
         />
       </div>
 

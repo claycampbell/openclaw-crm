@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Loader2,
@@ -105,9 +106,12 @@ export default function ObjectSettingsPage() {
         setNewAttrSlug("");
         setNewAttrTitle("");
         setNewAttrType("text");
+        toast.success("Attribute added");
       } else {
         const data = await res.json();
-        setError(data.error?.message ?? "Failed to add attribute");
+        const msg = data.error?.message ?? "Failed to add attribute";
+        setError(msg);
+        toast.error(msg);
       }
     } finally {
       setAddingFor(null);
@@ -130,9 +134,12 @@ export default function ObjectSettingsPage() {
           (a) => a.id !== attributeId
         ),
       }));
+      toast.success("Attribute deleted");
     } else {
       const data = await res.json();
-      setError(data.error?.message ?? "Failed to delete attribute");
+      const msg = data.error?.message ?? "Failed to delete attribute";
+      setError(msg);
+      toast.error(msg);
     }
   }
 

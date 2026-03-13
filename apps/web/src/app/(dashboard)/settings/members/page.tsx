@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Loader2, UserPlus, Trash2, Shield, User } from "lucide-react";
 
@@ -57,13 +58,16 @@ export default function MembersPage() {
       if (res.ok) {
         const data = await res.json();
         setEmail("");
+        toast.success(data.data?.type === "invited" ? "Invite sent" : "Member added");
         fetchMembers();
         if (data.data?.type === "invited") {
           setInviteLink(data.data.inviteLink);
         }
       } else {
         const data = await res.json();
-        setError(data.error?.message ?? "Failed to add member");
+        const msg = data.error?.message ?? "Failed to add member";
+        setError(msg);
+        toast.error(msg);
       }
     } finally {
       setAdding(false);
@@ -80,9 +84,12 @@ export default function MembersPage() {
       setMembers((prev) =>
         prev.map((m) => (m.id === memberId ? { ...m, role } : m))
       );
+      toast.success("Role updated");
     } else {
       const data = await res.json();
-      setError(data.error?.message ?? "Failed to change role");
+      const msg = data.error?.message ?? "Failed to change role";
+      setError(msg);
+      toast.error(msg);
     }
   }
 
@@ -92,9 +99,12 @@ export default function MembersPage() {
     });
     if (res.ok) {
       setMembers((prev) => prev.filter((m) => m.id !== memberId));
+      toast.success("Member removed");
     } else {
       const data = await res.json();
-      setError(data.error?.message ?? "Failed to remove member");
+      const msg = data.error?.message ?? "Failed to remove member";
+      setError(msg);
+      toast.error(msg);
     }
   }
 

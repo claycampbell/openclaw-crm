@@ -1,17 +1,17 @@
 # Project Research Summary
 
-**Project:** OpenClaw CRM — AI-Driven Sales Pipeline Automation
-**Domain:** B2B Sales CRM with proactive AI automation, multi-channel signal ingestion, and document generation
-**Researched:** 2026-03-10
-**Confidence:** MEDIUM (codebase examined directly; external API specifics unverified due to no live web search)
+**Project:** OpenClaw CRM v2.0
+**Domain:** AI-first CRM — brownfield feature integration on an existing Next.js 15 / Drizzle / PostgreSQL stack
+**Researched:** 2026-03-11
+**Confidence:** HIGH
 
 ## Executive Summary
 
-OpenClaw is evolving from a reactive CRM (AI responds when users ask) to a proactive one (AI acts when signals arrive). This is a well-understood architectural pattern in the AI-CRM category — the same shift Gong, Outreach, and Salesloft made — but it requires three new layers that the current codebase does not yet have: a signal ingestion layer (email/calendar/telephony webhooks), a durable background job system (to decouple AI generation from request handlers), and an AI action engine (to evaluate automation rules and dispatch document generators). None of the four research areas found significant disagreement about how to build this; the approach is mature and the patterns are established.
+OpenClaw v2.0 is a brownfield upgrade of an existing, well-structured CRM. The v1.0 codebase already has schema stubs, service scaffolding, and API routes for almost every v2.0 feature. The research reveals that the primary challenge is not building new systems from scratch — it is **correctly wiring together systems that already exist but are disconnected or contain concrete bugs**. The most critical finding is that the background job queue is a no-op: `processJobs()` marks every job completed without invoking handlers, and the `enqueueJob` call in `automation-engine.ts` passes arguments in the wrong order (workspaceId as job type, job type as payload). These two bugs silently disable AI generation, integration sync, activity scoring, webhook delivery, and analytics computation. Every async v2.0 feature depends on fixing these first.
 
-The recommended approach centers on a PostgreSQL-native job queue (pg-boss) that eliminates the need for Redis or external job platforms, a provider-adapter pattern for email/calendar integrations (one file per provider, shared interface), and a `generated_assets` table as the canonical home for all AI-produced content. The existing EAV architecture, OpenRouter AI integration, and agent channel system are all correct foundations — the new work extends them rather than replacing them. Email integration is the keystone feature: without it, the activity timeline is sparse, the AI has no signal data, and every differentiating feature is blind. Build email first.
+The recommended approach follows the existing architectural grain: layered service pattern (API route → service → Drizzle → PostgreSQL), signal-driven reactivity (CRM events emit signal_events, which trigger automation evaluation, which enqueues jobs, which call handlers), and typed EAV for all record data. Net-new library additions are deliberately minimal — 9 packages cover everything (sonner, react-error-boundary, react-hook-form, @hookform/resolvers, @xyflow/react, @tanstack/react-virtual, papaparse, @tiptap/extension-mention, @tiptap/suggestion). The existing stack needs no replacement. Only 4 new database tables are required across all v2.0 features (comments, saved_views, webhook_subscriptions, webhook_deliveries).
 
-The primary risk cluster is trust erosion from proactive AI that acts without human review. Every research area independently converged on the same guard: all AI-generated content must land in a `draft` state requiring explicit rep approval before any customer-facing action is taken. The secondary risk cluster is data hygiene — OAuth tokens must have dedicated encrypted storage with proactive refresh, email signals require deduplication, and transcripts require PII controls and consent gates. Both risk clusters are cheap to prevent during initial build and extremely expensive to retrofit after launch.
+The key risks center on three areas: (1) the job system bugs creating silent failures when real handlers are registered, (2) Gmail/Outlook sync edge cases (historyId invalidation, delta token expiry) causing re-sync storms in production with real user mailboxes, and (3) AI generation cost blowout from unthrottled signal-to-job cascades. All three are addressable with well-documented patterns — SKIP LOCKED for jobs, bounded partial-sync recovery for email, per-workspace budget tracking for AI generation — but they must be designed in from the start of each respective phase, not retrofitted.
 
 ---
 
@@ -19,242 +19,223 @@ The primary risk cluster is trust erosion from proactive AI that acts without hu
 
 ### Recommended Stack
 
-The existing stack (Next.js 15, Drizzle ORM, PostgreSQL 16+, Better Auth, OpenRouter, shadcn/ui) is solid and unchanged. Net-new additions are deliberately minimal: pg-boss for job queuing (PostgreSQL-backed, zero new infrastructure), googleapis and @microsoft/microsoft-graph-client for email/calendar OAuth, @aws-sdk/client-s3 for generated file storage, @react-pdf/renderer and pptxgenjs for document generation, twilio and assemblyai for telephony, and the Vercel AI SDK for structured LLM output. Proxycurl (not LinkedIn's official API) is the correct path for LinkedIn enrichment. No workflow engines, no Redis, no external job platforms — all deferred or rejected due to operational overhead relative to benefit at current scale.
+The existing v1.0 stack (Next.js 15, Drizzle ORM, PostgreSQL 16+, Better Auth, shadcn/ui, TanStack Table v8, TipTap, dnd-kit, Zod, googleapis, assemblyai) is validated and complete. V2.0 adds 9 definite packages and 1 conditional. See `.planning/research/STACK.md` for full rationale.
 
-**Core technologies (net-new):**
-- `pg-boss ^10.x`: Durable job queue backed by existing PostgreSQL — eliminates Redis, enables retry/audit, Vercel Cron compatible
-- `googleapis ^144.x` + `@microsoft/microsoft-graph-client ^3.x`: Gmail/Outlook OAuth sync, push notifications, calendar access
-- `@aws-sdk/client-s3 ^3.x`: Store generated PDFs and PPTX without bloating the database
-- `@react-pdf/renderer ^4.x` + `pptxgenjs ^3.x`: Server-side PDF/deck generation without a headless browser
-- `twilio ^5.x` + `assemblyai ^4.x`: Call recording access and structured transcript extraction (chapters, action items, sentiment)
-- `ai ^3.x` (Vercel AI SDK): `generateObject()` with Zod schemas for typed structured AI output — coexists with existing raw OpenRouter calls
-- **Proxycurl** (HTTP only, no SDK): LinkedIn profile enrichment via compliant third-party — do not use the official LinkedIn API for enrichment
+**Core additions:**
 
-**Critical version checks needed before install:** All package versions are from August 2025 training data. Run `npm info <package> version` before installing. Pay particular attention to `@react-pdf/renderer` React 19 compatibility.
+- **sonner ^2.0.7**: Toast notifications — shadcn/ui native integration, imperative `toast()` API, replaces all `window.alert()` calls
+- **react-error-boundary ^6.1.1**: Graceful error recovery in client components — wraps route segments and critical UI
+- **react-hook-form ^7.54.0 + @hookform/resolvers ^5.2.2**: Form state with Zod integration — shadcn/ui Form component is built on this; handles EAV dynamic field arrays via `useFieldArray`; stay on v7 stable (v8 is in beta)
+- **@xyflow/react ^12.10.1**: Visual automation builder UI — connects to existing `automation_rules` schema and `automation-engine.ts`; use for the workflow UI, NOT as a workflow execution engine
+- **@tanstack/react-virtual ^3.13.21**: Virtual scrolling for record lists — same TanStack ecosystem as existing TanStack Table; replaces hardcoded `limit=200` across 6+ endpoints
+- **papaparse ^5.5.2**: Production-grade CSV parsing with Web Worker support — replaces hand-rolled 60-line `parseCSV()` for import; existing `generateCSV()` for export is fine
+- **@tiptap/extension-mention ^3.20.1 + @tiptap/suggestion ^3.20.1**: @mention support — first-party TipTap extensions, version-aligned with installed TipTap ^3.19.x
+- **nuqs ^2.x** (conditional): URL state for shareable filtered/paginated table views — evaluate during pagination phase; skip if internal-only views suffice
 
----
+Do NOT add: pg-boss, BullMQ, Redis, socket.io, Vercel AI SDK, Jotai/Zustand, tRPC, Prisma, xlsx/exceljs, Temporal, or n8n embed. The existing infrastructure handles all these needs at CRM scale.
 
 ### Expected Features
 
-Email integration and proactive AI asset generation on deal stage change are both table stakes and the core differentiator — they must ship together in v1 to validate the product promise. Every competitor monetizes AI features as premium add-ons; OpenClaw's opportunity is delivering all of it at the base price.
+See `.planning/research/FEATURES.md` for full prioritization matrix, competitor analysis, and implementation patterns.
 
-**Must have — v1 (table stakes or core differentiator):**
-- Bi-directional Gmail / O365 sync with open/click tracking — reps will not adopt a CRM that doesn't auto-log email
-- Activity timeline (unified: emails, meetings, calls, notes, tasks, stage changes) — the first thing managers open
-- Deal stage change event hooks + async job queue — the infrastructure every proactive feature depends on
-- Proactive AI asset generation on stage advance (proposal draft, opportunity brief) — this IS the product promise
-- Meeting prep briefs (delivered T-30min before a linked calendar event) — immediate rep delight
-- Post-meeting follow-up drafts (triggered when a meeting ends or notes are added) — closes every meeting loop automatically
-- Calendar integration (Google / O365 meeting auto-log) — meetings are the highest-value sales events
-- Role-based dashboards (rep + manager views) — managers block adoption without pipeline visibility
+**Must have (table stakes — product feels broken without these):**
 
-**Should have — v1.x (competitive differentiation):**
-- AI outbound email sequence generation and execution
-- Lead scoring with AI qualification explanation
-- Approval workflow engine (discount routing, contract routing)
-- Competitive battlecard auto-generation from deal signals
-- Contract / SOW generation from deal data
-- Signal-driven AI nudges (website visit / engagement scoring)
+- Toast notification system (Sonner) — every SaaS product shows action feedback; `window.alert()` is unacceptable
+- Confirmation dialogs (shadcn AlertDialog) — replace all `window.confirm()` calls
+- Form validation with inline feedback — immediate field-level errors via react-hook-form + Zod
+- Record table pagination (cursor-based) — current hardcoded `limit=200` breaks at scale; 6+ endpoints affected
+- Background job execution loop — currently a no-op stub; unblocks ALL async features
+- Email thread view on record detail — fundamental CRM behavior; every competitor has it
+- Email compose on record detail — second most-used CRM action after viewing records
+- Export records to CSV — GDPR/regulatory requirement; data portability
+- Import with field mapping + dedup — #1 onboarding barrier when migrating from another CRM
 
-**Defer to v2+:**
-- Win/loss pattern analysis (requires 90+ days of closed deal history)
-- Rep performance coaching (requires multi-rep workspace data)
-- Pipeline forecasting with AI confidence scores (requires historical close rates)
-- Telephony / Zoom call recording + AI summarization (highest complexity, email covers most signal value first)
-- LinkedIn integration and prospect enrichment (API access gating, compliance risk)
-- Customer handoff brief to CS
+**Should have (differentiators — deliver the AI-first promise):**
 
-**Hard anti-features (never build):**
-- Full marketing automation / broadcast campaigns (different product, different persona)
-- Custom SQL report builder (AI-generated summaries replace 90% of use cases)
-- Native iOS/Android apps in v1 (responsive PWA covers the gap)
-- Real-time collaborative proposal editing (async draft/review is correct model)
-- LinkedIn scraping (ToS violation, liability, brittle)
+- AI asset generation pipeline — proposals, decks, follow-ups, battlecards auto-generated from deal context; the core differentiator
+- Integration delta sync (Gmail/Outlook/Calendar) — feeds signal events that power all AI automation
+- Activity scoring + hot leads dashboard — AI-driven lead prioritization
+- Visual workflow automation builder — power user retention via form-based trigger-condition-action UI
+- Analytics real calculations (win/loss, coaching, forecast) — wire up existing dashboard services
+- Team @mentions and comments — collaboration inside CRM instead of Slack/email
+- Saved views (shared filters) — team productivity via persisted filter configurations
+- Outbound webhooks — developer ecosystem integration via event-driven delivery
 
----
+**Defer to v3+:**
+
+- Node-graph workflow editor (n8n/Zapier style) — form-based builder covers 90% of CRM automation use cases
+- Duplicate detection on every save — import-only dedup first (expensive at EAV scale)
+- Inline spreadsheet-style table editing — record detail editing is sufficient; high bug surface area with 17 attribute types
+- Real-time WebSocket notifications — polling adequate for CRM; adds infrastructure complexity
+- Built-in email marketing campaigns — different product, different data model, compliance requirements
 
 ### Architecture Approach
 
-The architecture adds three layers to the existing foundation without changing it: an Integration Connector layer (per-provider adapter services that normalize external webhooks into internal signal events), a Signal Event Bus (a `signal_events` PostgreSQL table written transactionally with record mutations), and a Background Job Processor (pg-boss queue consumed by a cron-triggered worker). On top of these sits an extended AI Action Engine: the existing `crm-events.ts` plus a new `automation-engine.ts` that evaluates workspace automation rules and dispatches `ai_generate` jobs, which call new document generator services (`services/documents/proposal.ts`, `brief.ts`, `followup.ts`, etc.). All AI-generated content lands in a new `generated_assets` table with a `status` column (draft / approved / sent / archived) — never in EAV `record_values`.
+The architecture is a clean layered system (browser → middleware → API route → `getAuthContext()` → service → Drizzle → PostgreSQL) that all new features must follow without deviation. The core data model is typed EAV (`objects → attributes → records → record_values`). Background work routes through a `background_jobs` table polled by cron endpoints. CRM state changes flow through signal events to automation evaluation to job enqueue. AI generation always runs asynchronously via job handlers — never inline in request handlers. Every new table requires `workspace_id` + cascade deletion for multi-tenancy. Only 4 new tables cover all v2.0 features (comments, saved_views, webhook_subscriptions, webhook_deliveries). See `.planning/research/ARCHITECTURE.md` for component boundaries, data flow diagrams, and patterns to follow and avoid.
 
-**Major components:**
-1. **Integration Connectors** (`services/integrations/gmail.ts`, `outlook.ts`, `google-calendar.ts`, `zoom.ts`) — per-provider OAuth and webhook normalization; each exports a shared interface so providers are interchangeable
-2. **Signal Event Bus** (`signal_events` table, `services/signals.ts`) — transactional outbox pattern; every CRM state change and external signal writes a row here; the audit log and trigger source for all automation
-3. **Background Job Queue** (pg-boss + `services/job-queue.ts`) — `ai_generate`, `email_send`, `email_sync`, `calendar_sync`, `signal_evaluate` job types; workers called by Vercel Cron route handlers at `/api/v1/cron/`
-4. **Automation Engine** (`services/automation-engine.ts`) — rule evaluator that reads signal events and dispatches appropriate jobs; rules stored per-workspace
-5. **Document Generators** (`services/documents/`) — context assemblers + LLM callers for each asset type; output to `generated_assets` table; notify rep via existing agent channels
-6. **Generated Assets Table** (`ai_drafts` / `generated_assets`) — first-class lifecycle table for all AI-produced content; never the EAV model
-7. **Activity Timeline** (`services/activity-timeline.ts`) — unified read view over signal events, emails, calls, notes, and stage changes; UNION ALL query indexed on `(record_id, occurred_at)`
+**Major components and integration approach:**
 
----
+1. **Job Execution Engine** — Fix `processJobs()` to call `executeJob()`, add `FOR UPDATE SKIP LOCKED`, fix `enqueueJob` signature mismatch in `automation-engine.ts`. The entire async feature set depends on this.
+2. **Signal-Automation Pipeline** — Wire `writeSignalEvent()` to auto-enqueue `signal_evaluate` jobs; connect `automation_rules` table to evaluation logic (currently hardcoded and disconnected from the table).
+3. **AI Asset Generation Pipeline** — Build `services/generators/` with one file per asset type; extract shared `callOpenRouter()` from `ai-chat.ts`; register handlers in `instrumentation.ts`.
+4. **Integration Delta Sync** — Gmail `history.list` delta sync, Outlook delta tokens with proactive refresh, Calendar `meeting_ended` signal emission. Bounded partial-sync recovery path mandatory before shipping.
+5. **Analytics Engine** — Pure SQL aggregation against existing tables; summary/denormalized tables for EAV performance; cache with TTL.
+6. **Email Compose + Thread View** — Email tab on record detail; thread view grouped by `thread_id`; compose via provider OAuth API (never SMTP relay for user-addressed mail).
+7. **Activity Scoring** — Score as EAV attribute (Option A, recommended); recalculated by `lead_score` job on relevant signals.
+8. **Team Collaboration** — Comments table (separate from Notes), @mentions via TipTap extension, saved_views table.
+9. **Outbound Webhooks** — Two new tables; HTTP delivery via job queue; HMAC-SHA256 signing; circuit breaker pattern.
+10. **Visual Workflow Builder** — Frontend-only CRUD against existing `automation_rules` table and routes; linear trigger-condition-action form UI.
+11. **Import/Export** — Multi-step wizard; large imports as background jobs; pre-loaded lookup Map for dedup.
 
 ### Critical Pitfalls
 
-1. **No job queue before proactive AI features** — Firing OpenRouter calls inside record CRUD handlers causes request timeouts, silent failures, and no retry. The job queue must be built before any AI generator is written. No exceptions.
+See `.planning/research/PITFALLS.md` for all 15 pitfalls with code-level detail and phase-specific warnings.
 
-2. **OAuth token mismanagement** — Tokens expire (Google: 1 hour access, 6 months refresh on inactivity), rotate, and get revoked. Storing them in the workspace `settings` JSONB blob is unrecoverable. Build a dedicated `integration_tokens` table with `expires_at`, proactive refresh (5 minutes before expiry), and `invalid_grant` detection before the first OAuth sync.
+1. **Job queue race conditions + enqueueJob signature mismatch (Pitfalls 1 and 15)** — processJobs() is a no-op and automation-engine.ts passes arguments in the wrong order. Fix both before registering any real handlers. Use `FOR UPDATE SKIP LOCKED` to prevent double-execution. Without this fix, no async feature works. Address first in the entire project.
 
-3. **EAV misuse for AI-generated content** — Storing proposals, briefs, or sequences as `json_value` attribute values conflates CRM data (what EAV is for) with work product (which has its own lifecycle). Build the `generated_assets` table schema before writing any generator. Retrofitting this later requires a cross-workspace data migration.
+2. **Gmail historyId invalidation causing re-sync storms (Pitfall 2)** — Stored historyId can expire after ~30 days or on mailbox changes. Naive full re-sync hits Gmail API quota and loops. Prevention: bounded partial-sync (last 7 days) on invalidation, not full re-sync. Build recovery path before shipping sync to users.
 
-4. **Signal deduplication gap** — Gmail Pub/Sub, Zoom webhooks, and O365 Graph subscriptions all deliver at-least-once. Without a `processed_signals` deduplication table with a unique constraint on `(provider, signal_id)`, every webhook retry creates duplicate activity events, duplicate AI triggers, and potentially duplicate sends. Build this before connecting any external signal source.
+3. **Outlook delta token expiry for inactive users (Pitfall 3)** — Graph delta tokens expire after 7 days of non-use. Graph webhook subscriptions expire after ~3 days and require proactive renewal at 80% of max lifetime. Prevention: background job to proactively refresh delta tokens every 3-4 days; track `webhookExpiresAt` separately.
 
-5. **Proactive AI writes without approval gates** — The existing chat system correctly gates writes behind `requiresConfirmation`. Background AI actions have no equivalent. Every proactive AI action must land as `status: "draft"` in `generated_assets` and require explicit rep approval before any customer-facing output is sent. Build the review/approval inbox UI before shipping the first generator — not after.
+4. **AI generation cost blowout from signal cascades (Pitfall 4)** — A single busy deal can trigger 5-10 LLM calls/day. At 50 active deals, that is 250-500 calls/day at $0.01-0.10 each. Prevention: per-workspace daily budget tracking, 15-minute deduplication window per (type + recordId), model tiering (cheap models for follow-ups, expensive for proposals).
 
-6. **Context window explosion** — Reusing `buildSystemPrompt` for background jobs passes the full workspace schema into every proactive generation call. At scale (20 stage changes/day per workspace, each triggering a generation), this is cost-prohibitive and hits context limits. Define a tiered context strategy (rule-based / light model / full model) in the job schema before writing any job processor.
+5. **Email compose deliverability via wrong send path (Pitfall 5)** — Always use user's OAuth token + provider API for email that appears to come from the user's address. SPF/DKIM/DMARC alignment fails with SMTP relay, causing spam classification. Reserve Resend for system notifications from a CRM-owned domain only.
 
 ---
 
 ## Implications for Roadmap
 
-### Phase 1: Background Job Infrastructure
-**Rationale:** Every proactive AI feature depends on async job processing. This has zero user-visible value on its own but is the prerequisite for every phase that follows. Building it first means every subsequent phase can use it immediately and the "fire-and-forget in CRUD handlers" anti-pattern never enters the codebase.
-**Delivers:** `background_jobs` table (pg-boss schema), job enqueue/dequeue helpers (`services/job-queue.ts`), worker cron endpoint (`/api/v1/cron/sync`), retry logic with exponential backoff, dead-letter handling, job monitoring visibility.
-**Addresses:** Pitfall 1 (no job queue), Pitfall 6 (context window tiering — define `context_tier` in job schema now).
-**Avoids:** Any LLM calls inside CRUD service functions.
+Based on combined research, the dependency graph is unambiguous and the phase structure follows directly from it. Feature research, architecture analysis, and pitfall research all independently converge on the same ordering.
 
-### Phase 2: Signal Event Bus + Automation Engine
-**Rationale:** The signal event bus is the architecture's nervous system — everything reacts to it. Before email integration ships, establish the pattern: CRM events write to `signal_events` transactionally, a rule evaluator dispatches jobs. This phase makes the system "proactive" at the infrastructure level. Stage-change hooks are the most critical signal; they can be wired without email integration.
-**Delivers:** `signal_events` table, `services/signals.ts` write helpers, `services/automation-engine.ts` rule evaluator, workspace-scoped automation rules table, stage-change-to-job dispatch wired through existing `records.ts`.
-**Addresses:** Deal stage change event hooks (P1 feature), the architectural inflection point from reactive to proactive.
-**Avoids:** Pitfall 4 (signal deduplication — build `processed_signals` table here before any external signals arrive).
+### Phase 1: Infrastructure + UX Polish
 
-### Phase 3: Email Integration (Gmail + O365)
-**Rationale:** Email is the keystone dependency for the activity timeline, AI sequences, and post-meeting follow-ups. It is also the highest-complexity integration. Build it early so signal data starts accumulating. Gmail-first is correct — build O365 second using the same provider-adapter interface.
-**Delivers:** `integration_tokens` table with encrypted storage + proactive refresh, Gmail OAuth connect/callback/disconnect flow, Gmail push notifications (Cloud Pub/Sub webhook), inbox delta sync (historyId cursor), email-to-record matching by contact email, `email_messages` table (not EAV storage), activity timeline email events, open/click tracking via Resend webhooks for outbound.
-**Stack:** `googleapis ^144.x`, `ENCRYPTION_KEY` env var, `@google-cloud/pubsub` (optional — can use gcloud CLI for Pub/Sub subscription management).
-**Addresses:** Pitfall 2 (OAuth token mismanagement — build `integration_tokens` before first sync), Performance Trap (email body storage — store metadata + snippet only, fetch body on demand).
-**Research flag:** Gmail push notification quota limits and watch expiry duration should be verified against current Google documentation before implementation. O365 Graph subscription renewal requirements need verification.
+**Rationale:** The job system bugs (Pitfalls 1 and 15) and the signal pipeline gap (writeSignalEvent not auto-enqueuing jobs) must be fixed before any real feature work begins. Simultaneously, UX polish (toasts, forms, pagination, error boundaries) is standalone with zero dependencies and delivers immediate user-visible improvement. These two workstreams can proceed in parallel within the phase.
 
-### Phase 4: AI Document Generators + Generated Assets Table
-**Rationale:** With the job queue, signal bus, and email integration in place, proactive document generation can ship. This phase delivers the product's core promise: "when a deal moves to Proposal, the AI drafts the proposal." The `generated_assets` schema must be defined before any generator is written.
-**Delivers:** `generated_assets` table (id, workspace_id, record_id, asset_type, status, content, model_used, prompt_version, generated_at, approved_by), review/approval inbox UI, proposal generator, opportunity brief generator, meeting prep brief generator (pre-meeting trigger), post-meeting follow-up draft generator, rep approval flow (draft → approved → queued for send), agent channel notification for new drafts.
-**Stack:** `ai ^3.x` (Vercel AI SDK `generateObject()` with Zod schemas), tiered context strategy (light model for notifications, full model for proposals).
-**Addresses:** Pitfall 3 (EAV misuse), Pitfall 5 (no approval gate), Pitfall 8 (context window explosion), Proactive AI Asset Generation (P1), Post-Meeting Follow-up Drafts (P1), Meeting Prep Briefs (P1).
-**Avoids:** Review/approval inbox ships before first generator, not after.
+**Delivers:** Working job execution system with `FOR UPDATE SKIP LOCKED`, correct signal-to-job routing, Sonner toast system throughout the app, shadcn AlertDialog replacing browser confirms, react-hook-form + Zod inline validation on all forms, cursor-based pagination replacing hardcoded `limit=200`, error boundaries on critical client components.
 
-### Phase 5: Calendar Integration
-**Rationale:** Calendar integration enables meeting auto-logging (which populates the activity timeline with the most valuable event type) and provides the trigger for meeting prep briefs. It depends on document generators already existing (meeting prep brief = a document generator triggered by calendar event T-30min).
-**Delivers:** Google Calendar OAuth (shared credential with Gmail — single OAuth flow), calendar event delta sync (syncToken cursor), meeting-to-deal association (attendee email matching), meeting auto-log to activity timeline, meeting prep brief trigger (T-30min scheduled job), post-meeting follow-up trigger (meeting end event).
-**Stack:** `googleapis` Calendar API (already installed in Phase 3).
-**Addresses:** Calendar integration (P1 table stakes), meeting auto-log.
+**Addresses features:** Toast notifications, confirmation dialogs, form validation, record pagination, background job execution loop.
 
-### Phase 6: Activity Timeline (Unified View)
-**Rationale:** By Phase 6, signal events from email and calendar are accumulating. Now build the unified query layer that assembles them into a single chronological view. This is a read-only query (UNION ALL across signal_events, email_messages, notes, tasks, stage changes) — no new writes.
-**Delivers:** `services/activity-timeline.ts` unified query, activity timeline UI component (deal record page), indexed on `(record_id, occurred_at)`, workspace-scoped (cross-workspace leakage prevention), AI-readable summary for deal context assembly.
-**Addresses:** Activity timeline (P1 table stakes), Performance Trap (N+1 on timeline — UNION ALL with single query).
+**Avoids pitfalls:** Job race conditions (SKIP LOCKED), enqueueJob signature mismatch (fix before any handlers registered), notification fatigue (establish three-tier notification model before any feature adds toasts), cursor pagination ties (composite cursor with record_id tiebreaker).
 
-### Phase 7: Role-Based Dashboards
-**Rationale:** Managers won't adopt without pipeline visibility. This phase adds the rep (my pipeline), manager (team pipeline), and leadership (revenue forecast) views using existing EAV query infrastructure and TanStack Table. No new backend work beyond aggregation queries.
-**Delivers:** Rep pipeline dashboard, manager team pipeline view, basic pipeline summary (deal count, weighted value, stage distribution), configurable per-user view preferences.
-**Addresses:** Role-based dashboards (P1 table stakes).
+**Stack additions:** sonner, react-error-boundary, react-hook-form, @hookform/resolvers, @tanstack/react-virtual (+ evaluate nuqs for URL state).
 
-### Phase 8: Email Sequences
-**Rationale:** With email integration stable and approval flow established, extend to sequence orchestration. This is the "AI fills the pipeline" phase — SDR outbound at scale. Requires the job queue (step scheduling), email integration (send execution), and approval flow (no sequence sends without rep review of generated steps).
-**Delivers:** Sequence CRUD, sequence step scheduler (job-based), contact enrollment, reply detection to stop sequence, A/B variant tracking, Resend integration for outbound delivery.
-**Stack:** No new dependencies — builds on job queue + email integration.
-**Addresses:** AI outbound email sequences (P2).
-**Research flag:** Send-time optimization and reply detection patterns — may need specific research into provider webhook detection for reply signals.
+### Phase 2: AI Pipeline + Integration Sync
 
-### Phase 9: Approval Workflow Engine + Contract/SOW Generation
-**Rationale:** Enterprise deals stall without approval routing. Approval workflow is a prerequisite for contract generation (contracts must route before dispatch). Both are relatively self-contained but depend on the `generated_assets` table (Phase 4) and role-based permissions (already in place).
-**Delivers:** `approval_requests` table (record_id, type, status, requested_by, approved_by, due_at), configurable rules per workspace (discount threshold, contract value threshold), escalation via pg-boss scheduled jobs for overdue approvals, contract/SOW generator service (`services/documents/contract.ts`), PDF output via `@react-pdf/renderer`, S3 storage for generated PDFs.
-**Stack:** `@react-pdf/renderer ^4.x`, `@aws-sdk/client-s3 ^3.x`.
-**Addresses:** Approval workflow engine (P2), Contract/SOW generation (P2), Pitfall 5 (high-stakes approvals require explicit re-authentication or manager confirmation, not just button click).
+**Rationale:** The core product differentiator is AI-generated assets triggered by deal context changes. This requires the job system (Phase 1) to be working. Email sync is paired here because synced emails and meetings provide richer AI context and are the primary input to the signal events system. Email thread view is the natural UI output of sync being complete.
 
-### Phase 10: Lead Scoring + Competitive Battlecards
-**Rationale:** By Phase 10, engagement signals (email opens, meeting attendance, stage velocity) are accumulating from previous phases. Lead scoring is now a weighted formula over real data — meaningful rather than speculative. Battlecard generation requires competitor mention detection in emails and notes, which is also now available.
-**Delivers:** Lead scoring engine (pg-boss job, weighted formula over `engagement_events`, score written as EAV `number_value`), AI qualification explanation (plain-language score rationale), competitive battlecard generator (`services/documents/battlecard.ts`, competitor mention detection in email subjects/note text), workspace-scoped battlecard library.
-**Addresses:** Lead scoring + AI qualification (P2), Competitive battlecards (P2).
+**Delivers:** Gmail delta sync with bounded partial-sync recovery, Outlook delta sync with proactive token refresh and webhook subscription renewal, Calendar meeting_ended signal emission, AI generators for opportunity_brief/followup/proposal/battlecard/deck in `services/generators/`, shared `callOpenRouter()` extracted from `ai-chat.ts`, generated asset inbox UI (review/approve/reject), email thread view on record detail.
 
-### Phase 11: Telephony Integration (Zoom + Call AI Summarization)
-**Rationale:** Telephony is the highest-complexity, highest-value remaining integration. Deferred to Phase 11 because email and calendar cover the majority of signal collection. Telephony adds call recordings and transcripts — new signal types with significant PII implications requiring consent infrastructure built before any transcript is stored.
-**Delivers:** Zoom recording webhook (`/api/v1/integrations/zoom/webhook`), transcript fetch via Zoom API, AssemblyAI structured transcription (chapters, action items, sentiment, speaker diarization), call auto-log to activity timeline, `call_recordings` table with explicit access controls, PII redaction pass before AI processing, per-workspace consent toggle.
-**Stack:** `twilio ^5.x` (optional outbound calling), `assemblyai ^4.x`.
-**Addresses:** Telephony + call AI summarization (P3), Pitfall 7 (transcript PII controls), Security Mistake (call content to AI without redaction).
-**Research flag:** Zoom webhook signature verification, AssemblyAI async webhook pattern, PII redaction approach — research before implementation.
+**Addresses features:** Integration delta sync, AI asset generation pipeline, email thread view.
 
-### Phase 12: Analytics + Forecasting (Data-Dependent)
-**Rationale:** These features require 90+ days of closed deal history to produce meaningful insights. Building infrastructure now but surfacing insights only after data accumulates. Win/loss analysis requires confirmed win/loss labels on a statistically significant sample. Rep coaching requires multiple reps in a workspace with comparable territories.
-**Delivers:** Win/loss pattern analysis (read-only query layer, AI narrative summary), rep performance coaching (cohort analysis, specific named deviations not generic), pipeline forecasting with AI confidence scores, engagement-signal-weighted probability.
-**Addresses:** Win/loss pattern analysis (P3), Rep performance coaching (P3), Pipeline forecasting (P3).
-**Avoids:** UX Pitfall (generic summaries dismissed by managers — surface specific, named-rep deviations; filter coaching by same-territory/same-product cohorts).
-**Research flag:** This phase is data-dependent, not code-dependent. Defer surfacing insights until workspace has sufficient history (target: 30+ closed deals, 90+ days of activity).
+**Avoids pitfalls:** Gmail historyId invalidation (bounded partial-sync built in before launch), Outlook delta token expiry (proactive refresh jobs), AI cost blowout (per-workspace budget tracking and deduplication windows built into handlers from day one, not retrofitted).
 
----
+**Stack additions:** No new packages (googleapis already installed, OpenRouter integration already in ai-chat.ts).
+
+### Phase 3: Email Compose + Activity Scoring + Analytics
+
+**Rationale:** These three features all depend on data from Phase 2 (synced emails, signal events, working OAuth tokens) but are independent of each other and can be developed in parallel. Analytics is included here to close the dashboard loop while synced data is fresh.
+
+**Delivers:** Email compose side panel on record detail with TipTap editor, template picker, CC/BCC, open/click tracking, send via OAuth provider API; activity scoring via EAV attribute using tier-based labels (Hot/Warm/Cold) initially, not arbitrary point scores; hot leads dashboard view ordered by score; real win/loss, rep coaching, and forecast calculations with summary tables and cached results.
+
+**Addresses features:** Email compose, activity scoring + hot leads, analytics real calculations.
+
+**Avoids pitfalls:** Email deliverability (always OAuth API, never SMTP relay for user-addressed mail), activity scoring cold-start (ship tier-based labels with outcome feedback loop; calibrate point weights after 50+ closed deals), EAV analytics performance cliff (summary/denormalized tables and TTL cache designed in, not added later).
+
+**Stack additions:** No new packages.
+
+### Phase 4: Power User + Collaboration + Ecosystem
+
+**Rationale:** These features are valuable for retention and expansion but depend on the core product being stable and trusted. They are mostly independent of each other and can be parallelized within the phase. Workflow builder is frontend-only. Team collaboration adds two new tables. Webhooks add two new tables. Import/export extends existing CSV utilities.
+
+**Delivers:** Visual workflow automation builder (form-based trigger-condition-action UI against existing `automation_rules` table and API routes); team @mentions with notification creation in TipTap notes; threaded comments on records (separate from notes); private/team saved views with explicit sharing; multi-step CSV import wizard with PapaParse, field auto-mapping, dedup via pre-loaded lookup Map, batch processing via job queue; outbound webhooks with HMAC signing, exponential backoff, circuit breaker, and delivery log.
+
+**Addresses features:** Visual automation builder, team @mentions and comments, saved views, import/export with field mapping, outbound webhooks.
+
+**Avoids pitfalls:** Workflow builder complexity (form-based trigger-condition-action, not node-graph; defer visual graph to v3), mention resolution leaking across workspaces (always query through workspace_members join table), saved view privacy (default to private, explicit sharing action required), import EAV fuzzy matching performance (pre-loaded lookup Map built once per import, not per-row queries), webhook retry storms (exponential backoff with jitter, circuit breaker per URL after 5 consecutive failures).
+
+**Stack additions:** @xyflow/react (workflow builder), @tiptap/extension-mention + @tiptap/suggestion (@mentions), papaparse (import).
 
 ### Phase Ordering Rationale
 
-- **Infrastructure before features:** Job queue (Phase 1) and signal bus (Phase 2) are prerequisites for every proactive feature. Building them first means no anti-patterns enter the codebase and every subsequent phase builds on solid ground.
-- **Email before calendar:** Email is the higher-volume signal source and the harder integration. Calendar OAuth can piggyback on Gmail credentials (single OAuth flow). Email must come first.
-- **Document generators require approval UI:** Phase 4 ships the review/approval inbox before the first generator ships in the same phase. This is a hard constraint from pitfall research.
-- **Sequences require stable email:** Phase 8 (sequences) comes after Phase 3 (email integration) is proven stable.
-- **Contracts require approval workflow:** Phase 9 pairs approval workflow with contract generation because contracts without approval routing are unusable in enterprise deals.
-- **Lead scoring and battlecards require signal data:** Phase 10 requires months of email signals (Phase 3) and note data to detect competitor mentions.
-- **Telephony last of the integrations:** Highest complexity, most PII risk, least blocking. Email and calendar cover most signal collection.
-- **Analytics last:** Strictly data-dependent. Code can be written earlier but surfacing is gated on data volume.
-
----
+- **Job system first is non-negotiable.** Every async feature (AI generation, sync, scoring, webhooks, analytics computation) silently fails until the processJobs bug and enqueueJob signature mismatch are fixed. This was identified independently by both architecture and pitfalls research with specific line references.
+- **AI pipeline and integration sync are co-dependent.** The AI generators benefit from synced email context; email thread view is the primary UI output of sync working. Building them together in Phase 2 avoids a half-delivered experience.
+- **Analytics and activity scoring follow accumulated data.** Both produce meaningful results only after Phase 2 signal data exists. The dashboard threshold gates that already exist in the codebase enforce minimum data requirements.
+- **Power user features come last** because they depend on the core product being stable and trusted. Workflow automation is most valuable when reps are already using email compose and AI drafts. Import/export is most valuable when the rest of the product is working. @mentions are most valuable when records are rich with activity.
+- **Phase 4 features are highly parallelizable.** All four workstreams (workflow builder, collaboration, import/export, webhooks) are independent. A team can assign them to parallel streams within the same phase.
 
 ### Research Flags
 
-Phases needing deeper research during planning:
-- **Phase 3 (Email Integration):** Gmail push notification quota limits, watch expiry duration, and token rotation behavior should be verified against current Google documentation. O365 Graph subscription renewal (currently 3-day expiry per research) needs verification. Verify `googleapis ^144.x` is the current stable version.
-- **Phase 8 (Email Sequences):** Reply detection via Gmail/O365 webhook signals — verify the specific webhook event types that indicate a sequence recipient replied.
-- **Phase 9 (Contracts):** Verify `@react-pdf/renderer ^4.x` React 19 compatibility before install. PDF generation for legally-significant documents may have formatting requirements worth researching.
-- **Phase 11 (Telephony):** Zoom webhook signature format, AssemblyAI async transcription webhook pattern, PII redaction approach (regex vs NLP) — all need research before implementation begins.
-- **Phase 12 (Analytics):** Statistical significance thresholds for win/loss pattern claims — research what minimum deal volume produces reliable patterns to avoid surfacing misleading insights.
+Phases likely needing deeper research or prototyping during planning:
 
-Phases with standard patterns (skip research-phase):
-- **Phase 1 (Job Queue):** pg-boss is well-documented. Pattern is established.
-- **Phase 2 (Signal Bus):** Transactional outbox is a known pattern. Direct implementation from architecture research.
-- **Phase 4 (Document Generators):** LLM context assembly + Vercel AI SDK `generateObject()` — standard pattern, no research needed.
-- **Phase 5 (Calendar):** Same OAuth credential as Gmail. Calendar delta sync (syncToken) is documented.
-- **Phase 6 (Activity Timeline):** Read-only UNION ALL query — no research needed.
-- **Phase 7 (Dashboards):** TanStack Table already in stack. Aggregation queries over existing EAV data.
-- **Phase 10 (Lead Scoring):** Weighted formula over existing data. No external API research needed.
+- **Phase 2 (Gmail sync):** The bounded partial-sync recovery path and Gmail Pub/Sub push notification setup involve non-trivial Google Workspace API configuration. The historyId invalidation handling specifically needs a test harness with a real old mailbox (not a fresh test account) to validate before shipping.
+- **Phase 2 (AI generation prompts):** Research covers architecture and pipeline mechanics but cannot pre-validate prompt quality for each document type (proposal, deck, battlecard, follow-up, opportunity_brief). Initial prompts will require iteration against real deal data. Plan for prompt versioning from the start — the `promptVersion` field exists in the `generated_assets` schema.
+- **Phase 3 (analytics summary tables):** The denormalized summary table schema and the background job that populates it need careful design against the EAV model. The specific columns required depend on which analytics reports are prioritized first (win/loss vs coaching vs forecast vs next-best-action).
+
+Phases with well-documented patterns (skip research-phase):
+
+- **Phase 1 (toasts, forms, pagination):** Sonner, react-hook-form, and TanStack Virtual are all well-documented with shadcn/ui integration guides. Cursor pagination is documented in Drizzle's official guides. Standard implementation throughout.
+- **Phase 4 (webhooks):** Standard event-driven webhook delivery pattern. Well-documented across Pipedrive, GitHub, and Stripe implementations. HMAC signing and retry patterns are established.
+- **Phase 4 (@mentions):** TipTap Mention extension is first-party with complete documentation. The workspace_members query pattern follows existing patterns already in the codebase.
 
 ---
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
-|------|------------|-------|
-| Stack | MEDIUM | Existing stack (HIGH). Net-new packages: versions from August 2025 training data, unverified against current npm registry. Verify all versions before install. |
-| Features | MEDIUM | Core features from PROJECT.md and codebase (HIGH). Competitor feature parity claims from training data through August 2025 — may be stale as Salesforce Agentforce and HubSpot Breeze evolved in late 2024/early 2025. |
-| Architecture | HIGH | Patterns derived from direct codebase examination plus well-established CRM architecture patterns. The transactional outbox, provider adapter, and tiered AI context patterns are mature and validated. |
-| Pitfalls | MEDIUM-HIGH | Pitfalls derived from codebase analysis (HIGH confidence for existing code smell) and domain knowledge (MEDIUM for external API specifics). OAuth token rotation behavior and LinkedIn API access policy should be verified before implementation. |
+| --- | --- | --- |
+| Stack | HIGH | All packages verified on npm as of Mar 2026. shadcn/ui integration confirmed for sonner, react-hook-form, AlertDialog. TipTap extension versions verified as aligned with installed TipTap ^3.19.x. react-hook-form stays v7 stable (v8 is in beta with breaking changes). |
+| Features | HIGH | Competitor analysis (HubSpot, Pipedrive, Salesforce) cross-referenced. Feature priorities derived from direct codebase inspection confirming what stubs exist vs what is missing. MVP definition grounded in dependency graph, not arbitrary grouping. |
+| Architecture | HIGH | Based on direct inspection of 27 schema files, 44 services, 99 API routes. Two concrete bugs identified with exact file and line references. Component boundary table derived from actual code analysis. Anti-patterns identified from existing code decisions, not hypothetical scenarios. |
+| Pitfalls | HIGH | 5 critical pitfalls with specific code references to existing codebase. Gmail/Outlook edge cases sourced from official Google/Microsoft documentation. AI cost patterns sourced from production LLM deployment analyses. Job queue pitfalls confirmed by reading the actual code. |
 
-**Overall confidence:** MEDIUM-HIGH
+**Overall confidence:** HIGH
 
 ### Gaps to Address
 
-- **LinkedIn API access:** Research confirms LinkedIn's official API does not provide enrichment data without a Sales Navigator license and partner program membership (months-long approval). Proxycurl is the recommended alternative. Gap: confirm Proxycurl's current pricing and data freshness guarantees, and determine whether the product needs real-time LinkedIn signals (not available through any compliant API) or static enrichment (available through Proxycurl).
-- **Package version verification:** All net-new package versions are from August 2025 training data. Run `npm info <package> version` for every package in STACK.md before the first install command in any phase.
-- **Deployment model for pg-boss workers:** Architecture research identifies a Vercel-specific constraint — pg-boss workers cannot run as persistent processes on serverless. If deploying to Vercel, a separate worker process on Railway/Fly.io is required. This deployment decision should be made before Phase 1 and documented in the project constraints.
-- **OpenRouter model selection for tiered context strategy:** Phase 4 defines a tiered context strategy (rule-based / light model / full model). The specific model choices (e.g., claude-haiku equivalent on OpenRouter for light tier) depend on current model availability and pricing. Validate during Phase 4 planning.
-- **Competitor feature parity:** The feature research competitor table is from August 2025 training data. Salesforce Agentforce and HubSpot Breeze both launched significant AI features in late 2024/early 2025. Review current competitor documentation before using feature comparison in sales or marketing materials.
+- **nuqs (URL state) decision:** Whether shareable filtered views are a v2.0 requirement is a product decision, not a technical one. Confidence is MEDIUM. Evaluate at the start of Phase 1 pagination work. If yes, add nuqs; if internal-only views suffice, skip it.
+- **AI prompt quality:** Research covers architecture and pipeline mechanics but cannot pre-validate prompt quality for each document type. Expect iteration cycles after first real-world usage. Build prompt versioning into the generator design from the start (the `promptVersion` field already exists in `generated_assets`).
+- **Outlook push notification vs polling trade-off:** The architecture research recommends Graph webhook subscriptions as primary with polling as fallback. However, the 3-day renewal requirement adds operational complexity. If polling-only is preferred for simplicity in v2.0, the 7-day delta token expiry risk (Pitfall 3) must be covered by proactive refresh jobs. Make this decision during Phase 2 planning.
+- **Analytics report prioritization:** Which of the four analytics services (win-loss, rep-coaching, forecasting, next-best-action) ship in Phase 3 vs defer affects the summary table schema design. Requires a product decision before Phase 3 implementation begins.
 
 ---
 
 ## Sources
 
-### Primary (HIGH confidence)
-- Codebase direct examination — `services/ai-chat.ts`, `services/crm-events.ts`, `services/records.ts`, `db/schema/`, `CLAUDE.md` architecture overview
-- `.planning/PROJECT.md` — feature requirements from product owner
-- `.planning/codebase/ARCHITECTURE.md`, `.planning/codebase/INTEGRATIONS.md` — existing system capabilities and gaps
-- `.planning/CONCERNS.md` — technical constraints affecting feature complexity
+### Primary (HIGH confidence — direct codebase inspection)
 
-### Secondary (MEDIUM confidence)
-- Training data through August 2025 — pg-boss v10, googleapis v144, @react-pdf/renderer v4, Vercel AI SDK v3, AssemblyAI v4, Twilio v5 patterns
-- Vercel Cron Jobs documentation (official, verified 2026-02-27) — scheduling pattern, HTTP GET trigger
-- Salesforce Einstein / HubSpot Breeze / Close CRM / Outreach / Gong product knowledge through August 2025
+- `apps/web/src/services/job-queue.ts` — processJobs() no-op bug at lines 96-101, confirmed
+- `apps/web/src/services/automation-engine.ts` — enqueueJob signature mismatch confirmed
+- `apps/web/src/db/schema/` (27 files) — complete schema inventory for component boundary analysis
+- `apps/web/src/services/` (44 files) — service layer analysis
+- `apps/web/src/app/api/v1/` (99 routes) — API surface analysis
+- `apps/web/src/lib/job-queue.ts` vs `services/job-queue.ts` — dual implementation and signature gap confirmed
+- `apps/web/src/instrumentation.ts` — handler registration stubs confirmed
 
-### Tertiary (LOW confidence)
-- LinkedIn API access restrictions — training data; LinkedIn changes API policies frequently; verify current access tiers before scoping LinkedIn features
-- Gmail push notification quota limits and watch expiry — verify against current Google Cloud documentation before implementation
-- O365 Graph subscription expiry duration — verify against current Microsoft documentation
+### Primary (HIGH confidence — official documentation)
+
+- [Drizzle cursor-based pagination guide](https://orm.drizzle.team/docs/guides/cursor-based-pagination)
+- [shadcn/ui Sonner component](https://ui.shadcn.com/docs/components/radix/sonner)
+- [shadcn/ui Form component with react-hook-form](https://ui.shadcn.com/docs/forms/react-hook-form)
+- [@xyflow/react npm — v12.10.1 verified Mar 2026](https://www.npmjs.com/package/@xyflow/react)
+- [@tanstack/react-virtual npm — v3.13.21 verified Mar 2026](https://www.npmjs.com/package/@tanstack/react-virtual)
+- [@tiptap/extension-mention npm — v3.20.1 verified Mar 2026](https://www.npmjs.com/package/@tiptap/extension-mention)
+- [Gmail API synchronization guide](https://developers.google.com/workspace/gmail/api/guides/sync)
+- [Gmail API usage limits](https://developers.google.com/workspace/gmail/api/reference/quota)
+- [Microsoft Graph delta query overview](https://learn.microsoft.com/en-us/graph/delta-query-overview)
+- [Microsoft Graph delta token expiry](https://learn.microsoft.com/en-us/answers/questions/1474436/expiry-details-for-the-deltatoken-used-in-delta-qu)
+
+### Secondary (MEDIUM confidence — community/industry analysis)
+
+- [CRM lead scoring evolution 2025](https://coefficient.io/lead-scoring/crm-lead-scoring) — composite scoring model patterns
+- [Lead scoring rules and decay](https://monday.com/blog/crm-and-sales/lead-scoring-rules/) — 25% monthly decay best practice
+- [LLM cost optimization guide](https://ai.koombea.com/blog/llm-cost-optimization) — model tiering patterns
+- [1200 production LLM deployments analysis](https://www.zenml.io/blog/what-1200-production-deployments-reveal-about-llmops-in-2025) — generation cost patterns at scale
+- [DKIM/DMARC/SPF best practices 2025](https://saleshive.com/blog/dkim-dmarc-spf-best-practices-email-security-deliverability/) — email deliverability
+- [Outlook bulk sender requirements 2025](https://techcommunity.microsoft.com/blog/microsoftdefenderforoffice365blog/strengthening-email-ecosystem-outlook%E2%80%99s-new-requirements-for-high%E2%80%90volume-senders/4399730) — DMARC enforcement
+- [Salesforce Flow 2026 guide](https://www.default.com/post/salesforce-flow-building-visual-workflows-in-salesforce) — workflow builder patterns (what to adopt and what to avoid)
+- [Cursor-based pagination deep dive](https://www.milanjovanovic.tech/blog/understanding-cursor-pagination-and-why-its-so-fast-deep-dive) — O(1) page performance regardless of depth
+- [Webhook implementation patterns](https://www.leadwithskills.com/blogs/webhook-implementation-event-driven-integrations) — delivery, retry, idempotency
 
 ---
-
-*Research completed: 2026-03-10*
+*Research completed: 2026-03-11*
 *Ready for roadmap: yes*

@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { toast } from "sonner";
 import { NoteEditor } from "./note-editor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Trash2, ChevronDown, ChevronRight } from "lucide-react";
+import { Plus, Trash2, ChevronDown, ChevronRight, StickyNote } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { EmptyState } from "@/components/ui/empty-state";
 
 interface Note {
   id: string;
@@ -65,24 +67,30 @@ export function RecordNotes({ objectSlug, recordId }: RecordNotesProps) {
       setNewTitle("");
       setNewContent(null);
       setCreating(false);
+      toast.success("Note created");
       fetchNotes();
+    } else {
+      toast.error("Failed to create note");
     }
   }
 
   async function handleUpdate(noteId: string, updates: { title?: string; content?: unknown }) {
-    await fetch(`/api/v1/notes/${noteId}`, {
+    const res = await fetch(`/api/v1/notes/${noteId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(updates),
     });
 
+    if (!res.ok) { toast.error("Failed to update note"); return; }
     setNotes((prev) =>
       prev.map((n) => (n.id === noteId ? { ...n, ...updates } : n))
     );
   }
 
   async function handleDelete(noteId: string) {
-    await fetch(`/api/v1/notes/${noteId}`, { method: "DELETE" });
+    const res = await fetch(`/api/v1/notes/${noteId}`, { method: "DELETE" });
+    if (!res.ok) { toast.error("Failed to delete note"); return; }
+    toast.success("Note deleted");
     setNotes((prev) => prev.filter((n) => n.id !== noteId));
   }
 
@@ -132,15 +140,23 @@ export function RecordNotes({ objectSlug, recordId }: RecordNotesProps) {
 
       {/* Notes list */}
       {loading && notes.length === 0 && (
-        <p className="text-xs text-muted-foreground py-4 text-center">
-          Loading...
-        </p>
+        <div className="space-y-2 py-2">
+          {Array.from({ length: 2 }).map((_, i) => (
+            <div key={i} className="space-y-1.5 py-1">
+              <div className="h-3 w-24 rounded bg-primary/10 animate-pulse" />
+              <div className="h-3 w-3/4 rounded bg-primary/10 animate-pulse" />
+            </div>
+          ))}
+        </div>
       )}
 
       {!loading && notes.length === 0 && !creating && (
-        <p className="text-xs text-muted-foreground py-4 text-center">
-          No notes yet
-        </p>
+        <EmptyState
+          icon={StickyNote}
+          title="No notes yet"
+          description="Add a note to capture details."
+          compact
+        />
       )}
 
       <div className="space-y-2">

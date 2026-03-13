@@ -2,17 +2,17 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-10)
+See: .planning/PROJECT.md (updated 2026-03-11)
 
 **Core value:** The CRM does the work. Reps sell, AI handles everything else.
-**Current focus:** Phase 1 — Async Infrastructure
+**Current focus:** Milestone v2.0 -- Phase 6 ready for planning
 
 ## Current Position
 
-Phase: 1 of 5 (Async Infrastructure)
-Plan: 0 of 4 in current phase
-Status: Ready to plan
-Last activity: 2026-03-10 — Roadmap created, ready to begin Phase 1 planning
+Phase: 6 of 11 (Infrastructure + UX Polish)
+Plan: --
+Status: Roadmap defined, ready for phase planning
+Last activity: 2026-03-11 -- v2.0 roadmap created (phases 6-11, 55 requirements mapped)
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -42,11 +42,13 @@ Progress: [░░░░░░░░░░] 0%
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
 
-- [Roadmap]: pg-boss chosen for job queue (PostgreSQL-native, no Redis, Vercel Cron compatible)
-- [Roadmap]: Proxycurl chosen for LinkedIn enrichment (not official LinkedIn API — ToS compliance)
-- [Roadmap]: All AI-generated content lands as draft in generated_assets table, never EAV record_values
-- [Roadmap]: Approval inbox ships before first AI generator in Phase 3 (hard constraint from research pitfalls)
-- [Roadmap]: Analytics phase (5) gated on data volume — surface insights only after 30+ closed deals, 90+ days of activity
+- [v2.0 Roadmap]: 6 phases (6-11) covering 55 requirements at coarse granularity
+- [v2.0 Roadmap]: Infrastructure + UX Polish first (Phase 6) -- job system fix unblocks all async features
+- [v2.0 Roadmap]: Phases 9 and 10 depend only on Phase 6 (parallel with 7-8); Phase 11 depends on Phase 8
+- [v2.0 Roadmap]: Requirement count corrected from 51 to 55 after manual verification
+- [v2.0 Research]: Job queue processJobs() is a no-op, enqueueJob signature mismatch in automation-engine -- fix first
+- [v2.0 Research]: Gmail bounded partial-sync recovery mandatory before shipping delta sync
+- [v2.0 Research]: AI generation needs per-workspace budget + 15min dedup window from day one
 
 ### Pending Todos
 
@@ -54,15 +56,14 @@ None yet.
 
 ### Blockers/Concerns
 
-- [Phase 2 research flag]: Gmail push notification quota limits and watch expiry duration — verify against current Google documentation before Phase 2 planning
-- [Phase 2 research flag]: O365 Graph subscription renewal expiry — verify against current Microsoft documentation before Phase 2 planning
-- [Phase 3 research flag]: Reply detection webhook event types for Gmail/O365 — verify before Phase 3 email sequence planning
-- [Phase 4 research flag]: @react-pdf/renderer React 19 compatibility — run npm info before installing in Phase 4
-- [Deployment gap]: pg-boss workers cannot run as persistent processes on Vercel serverless — deployment model (Railway/Fly.io worker vs Vercel Cron) must be decided before Phase 1 begins
-- [Package versions]: All net-new package versions are from August 2025 training data — run npm info <package> version before every install
+- [Phase 7 research flag]: Gmail historyId invalidation and bounded partial-sync recovery needs testing with real old mailbox
+- [Phase 7 research flag]: Outlook delta token 7-day expiry handling and webhook subscription renewal timing
+- [Phase 8 research flag]: AI generation prompt quality needs iteration against real deal data; use promptVersion field
+- [Phase 11 research flag]: Analytics summary table schema depends on which reports are prioritized first
+- [Deployment gap]: pg-boss workers need deployment model decision (Railway/Fly.io worker vs Vercel Cron)
 
 ## Session Continuity
 
-Last session: 2026-03-10
-Stopped at: Roadmap and STATE.md initialized. No plans created yet.
+Last session: 2026-03-11
+Stopped at: v2.0 roadmap created, ready for phase 6 planning
 Resume file: None

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { success, badRequest } from "@/lib/api-utils";
-import { createWorkspace, listUserWorkspaces } from "@/services/workspace";
+import { createWorkspace, createWorkspaceWithHierarchy, listUserWorkspaces, listUserWorkspacesWithHierarchy } from "@/services/workspace";
+import { WORKSPACE_TYPES, type WorkspaceType } from "@openclaw-crm/shared";
 import { db } from "@/db";
 import { workspaceInvites, workspaceMembers } from "@/db/schema";
 import { eq, and, isNull } from "drizzle-orm";
@@ -16,8 +17,14 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const workspaces = await listUserWorkspaces(session.user.id);
-  return success(workspaces);
+  const grouped = req.nextUrl.searchParams.get("grouped") === "true";
+  if (grouped) {
+    const hierarchy = await listUserWorkspacesWithHierarchy(session.user.id);
+    return success(hierarchy);
+  }
+
+  const workspaceList = await listUserWorkspaces(session.user.id);
+  return success(workspaceList);
 }
 
 /** POST /api/v1/workspaces — Create a new workspace */
@@ -62,7 +69,20 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const workspace = await createWorkspace(name.trim(), session.user.id);
+    const type = (body.type as string) || undefined;
+    const parentWorkspaceId = (body.parentWorkspaceId as string) || undefined;
+
+    // If type is specified, use hierarchy-aware creation
+    let workspace;
+    if (type) {
+      if (!WORKSPACE_TYPES.includes(type as WorkspaceType)) {
+        return badRequest(`Invalid workspace type. Must be one of: ${WORKSPACE_TYPES.join(", ")}`);
+      }
+      workspace = await createWorkspaceWithHierarchy(name.trim(), type as WorkspaceType, session.user.id, parentWorkspaceId);
+    } else {
+      // Backward compatible: default to company type
+      workspace = await createWorkspace(name.trim(), session.user.id);
+    }
 
     // Set active-workspace-id cookie
     const response = NextResponse.json({ data: workspace }, { status: 201 });
@@ -74,7 +94,11 @@ export async function POST(req: NextRequest) {
     });
 
     return response;
-  } catch (err) {
+  } catch (err: any) {
+    // Return validation errors as 400
+    if (err?.message?.includes("parent") || err?.message?.includes("Agency") || err?.message?.includes("Business unit")) {
+      return badRequest(err.message);
+    }
     console.error("Failed to create workspace:", err);
     return NextResponse.json(
       { error: { code: "INTERNAL_ERROR", message: "Failed to create workspace" } },

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Plus,
@@ -13,9 +14,11 @@ import {
   ArrowUpDown,
   ChevronDown,
   ChevronRight,
+  CheckSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TaskDialog } from "./task-dialog";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   isToday,
   isTomorrow,
@@ -193,11 +196,12 @@ export function TaskList() {
       )
     );
 
-    await fetch(`/api/v1/tasks/${taskId}`, {
+    const res = await fetch(`/api/v1/tasks/${taskId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ isCompleted: !isCompleted }),
     });
+    if (!res.ok) toast.error("Failed to update task");
   }
 
   function openCreateDialog() {
@@ -226,8 +230,10 @@ export function TaskList() {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => null);
-        throw new Error(err?.error?.message || "Failed to create task");
+        toast.error(err?.error?.message || "Failed to create task");
+        return;
       }
+      toast.success("Task created");
     } else if (editingTask) {
       const res = await fetch(`/api/v1/tasks/${editingTask.id}`, {
         method: "PATCH",
@@ -236,15 +242,19 @@ export function TaskList() {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => null);
-        throw new Error(err?.error?.message || "Failed to update task");
+        toast.error(err?.error?.message || "Failed to update task");
+        return;
       }
+      toast.success("Task updated");
     }
     fetchTasks();
   }
 
   async function handleDelete() {
     if (!editingTask) return;
-    await fetch(`/api/v1/tasks/${editingTask.id}`, { method: "DELETE" });
+    const res = await fetch(`/api/v1/tasks/${editingTask.id}`, { method: "DELETE" });
+    if (!res.ok) { toast.error("Failed to delete task"); return; }
+    toast.success("Task deleted");
     fetchTasks();
   }
 
@@ -322,19 +332,25 @@ export function TaskList() {
       {/* Task list */}
       <div className="flex-1 overflow-auto">
         {loading && tasks.length === 0 && (
-          <p className="text-muted-foreground text-center py-12">Loading...</p>
+          <div className="space-y-3 py-4">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-3 px-4 py-2">
+                <div className="h-5 w-5 rounded-full bg-primary/10 animate-pulse" />
+                <div className="h-4 flex-1 max-w-[400px] rounded bg-primary/10 animate-pulse" />
+                <div className="h-4 w-20 ml-auto rounded bg-primary/10 animate-pulse" />
+              </div>
+            ))}
+          </div>
         )}
 
         {!loading && tasks.length === 0 && (
-          <div className="text-center py-12 space-y-2">
-            <p className="text-muted-foreground">
-              No tasks yet! Create your first task to get started.
-            </p>
-            <Button size="sm" variant="outline" onClick={openCreateDialog}>
-              <Plus className="mr-1 h-4 w-4" />
-              New task
-            </Button>
-          </div>
+          <EmptyState
+            icon={CheckSquare}
+            title="No tasks yet"
+            description="Create your first task to get started."
+            actionLabel="New task"
+            onAction={openCreateDialog}
+          />
         )}
 
         {visibleGroups.map((groupKey) => {

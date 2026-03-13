@@ -7,12 +7,14 @@ import {
   getCoreRowModel,
   flexRender,
   type ColumnDef,
+  type RowSelectionState,
 } from "@tanstack/react-table";
 import type { AttributeType } from "@openclaw-crm/shared";
 import { AttributeCell } from "./attribute-cell";
 import { AttributeEditor } from "./attribute-editor";
 import { cn } from "@/lib/utils";
-import { Plus, ExternalLink } from "lucide-react";
+import { Plus, ExternalLink, FileSpreadsheet, Trash2, Download, X } from "lucide-react";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 
 // ─── Types ───────────────────────────────────────────────────────────
@@ -37,7 +39,11 @@ interface RecordTableProps {
   records: RecordRow[];
   onUpdateRecord: (recordId: string, slug: string, value: unknown) => void;
   onCreateRecord: () => void;
+  onDeleteRecords?: (ids: string[]) => void;
   objectSlug: string;
+  hasMore?: boolean;
+  loadingMore?: boolean;
+  onLoadMore?: () => void;
 }
 
 // ─── Component ───────────────────────────────────────────────────────
@@ -47,12 +53,42 @@ export function RecordTable({
   records,
   onUpdateRecord,
   onCreateRecord,
+  onDeleteRecords,
   objectSlug,
+  hasMore,
+  loadingMore,
+  onLoadMore,
 }: RecordTableProps) {
   const router = useRouter();
   const [editingCell, setEditingCell] = useState<{ rowId: string; colId: string } | null>(null);
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+
+  const selectedIds = Object.keys(rowSelection).filter((k) => rowSelection[k]);
+  const selectedCount = selectedIds.length;
 
   const columns = useMemo<ColumnDef<RecordRow>[]>(() => {
+    // Checkbox column
+    const checkCol: ColumnDef<RecordRow> = {
+      id: "_select",
+      header: ({ table }) => (
+        <input
+          type="checkbox"
+          className="h-3.5 w-3.5 rounded border-border accent-primary cursor-pointer"
+          checked={table.getIsAllPageRowsSelected()}
+          onChange={table.getToggleAllPageRowsSelectedHandler()}
+        />
+      ),
+      size: 36,
+      cell: ({ row }) => (
+        <input
+          type="checkbox"
+          className="h-3.5 w-3.5 rounded border-border accent-primary cursor-pointer"
+          checked={row.getIsSelected()}
+          onChange={row.getToggleSelectedHandler()}
+        />
+      ),
+    };
+
     // Open button column
     const openCol: ColumnDef<RecordRow> = {
       id: "_open",
@@ -114,7 +150,7 @@ export function RecordTable({
       },
     }));
 
-    return [openCol, ...attrCols];
+    return [checkCol, openCol, ...attrCols];
   }, [attributes, editingCell, onUpdateRecord, objectSlug, router]);
 
   const table = useReactTable({
@@ -122,10 +158,45 @@ export function RecordTable({
     columns,
     getCoreRowModel: getCoreRowModel(),
     getRowId: (row) => row.id,
+    state: { rowSelection },
+    onRowSelectionChange: setRowSelection,
+    enableRowSelection: true,
   });
 
   return (
     <div className="flex flex-col h-full">
+      {/* Bulk action toolbar */}
+      {selectedCount > 0 && (
+        <div className="flex items-center gap-3 border-b border-primary/20 bg-primary/5 px-4 py-2">
+          <span className="text-sm font-medium">
+            {selectedCount} selected
+          </span>
+          {onDeleteRecords && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+              onClick={() => {
+                onDeleteRecords(selectedIds);
+                setRowSelection({});
+              }}
+            >
+              <Trash2 className="mr-1 h-3.5 w-3.5" />
+              Delete
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setRowSelection({})}
+            className="ml-auto"
+          >
+            <X className="mr-1 h-3.5 w-3.5" />
+            Clear
+          </Button>
+        </div>
+      )}
+
       <div className="flex-1 overflow-auto">
         <table className="w-full border-collapse">
           <thead className="sticky top-0 z-10 bg-background">
@@ -134,7 +205,7 @@ export function RecordTable({
                 {headerGroup.headers.map((header) => (
                   <th
                     key={header.id}
-                    className="h-9 px-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground"
+                    className="h-9 px-3 text-left text-xs font-medium text-muted-foreground"
                     style={{ width: header.getSize() }}
                   >
                     {flexRender(header.column.columnDef.header, header.getContext())}
@@ -162,17 +233,36 @@ export function RecordTable({
             ))}
             {records.length === 0 && (
               <tr>
-                <td
-                  colSpan={attributes.length}
-                  className="h-32 text-center text-muted-foreground"
-                >
-                  No records yet. Click the button below to create one.
+                <td colSpan={attributes.length + 2}>
+                  <EmptyState
+                    icon={FileSpreadsheet}
+                    title="No records yet"
+                    description="Create your first record to get started."
+                    actionLabel="New record"
+                    onAction={onCreateRecord}
+                    compact
+                  />
                 </td>
               </tr>
             )}
           </tbody>
         </table>
       </div>
+
+      {/* Load more */}
+      {hasMore && (
+        <div className="border-t border-border flex items-center justify-center py-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onLoadMore}
+            disabled={loadingMore}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            {loadingMore ? "Loading..." : "Load more records"}
+          </Button>
+        </div>
+      )}
 
       {/* Add record row */}
       <div className="border-t border-border p-2">

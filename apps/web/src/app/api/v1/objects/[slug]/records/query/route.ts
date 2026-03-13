@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
-import { getAuthContext, unauthorized, notFound, badRequest, success } from "@/lib/api-utils";
-import { getObjectBySlug } from "@/services/objects";
-import { listRecords, assertRecord } from "@/services/records";
+import { getAuthContext, unauthorized, notFound, badRequest, success, resolveWorkspaceScope } from "@/lib/api-utils";
+import { getObjectBySlug, getObjectsBySlugAcrossWorkspaces } from "@/services/objects";
+import { listRecords, listRecordsCursor, listRecordsMultiObject, assertRecord } from "@/services/records";
 import type { FilterGroup, SortConfig } from "@openclaw-crm/shared";
 
 /** POST /api/v1/objects/[slug]/records/query
@@ -16,12 +16,15 @@ export async function POST(
   if (!ctx) return unauthorized();
 
   const { slug } = await params;
+  const body = await req.json();
+
+  // Determine workspace scope
+  const scope = resolveWorkspaceScope(ctx);
+  const isRollUp = scope.length > 1;
+
+  // For assert mode and cursor pagination, always use single workspace (writes go to primary)
   const obj = await getObjectBySlug(ctx.workspaceId, slug);
   if (!obj) return notFound("Object not found");
-
-  const body = await req.json();
-  const limit = Math.min(Number(body.limit || 50), 200);
-  const offset = Number(body.offset || 0);
 
   // Assert mode: upsert by matching attribute
   if (body.mode === "assert" && body.matchAttribute && body.values) {
@@ -38,6 +41,41 @@ export async function POST(
   // Parse filter and sorts
   const filter: FilterGroup | undefined = body.filter;
   const sorts: SortConfig[] | undefined = body.sorts;
+
+  // Multi-workspace roll-up for read queries
+  if (isRollUp && body.cursor === undefined) {
+    const matchingObjects = await getObjectsBySlugAcrossWorkspaces(scope, slug);
+    if (matchingObjects.length > 0) {
+      const objectIds = matchingObjects.map(o => o.id);
+      const limit = Math.min(Number(body.limit || 50), 200);
+      const offset = Number(body.offset || 0);
+      const result = await listRecordsMultiObject(objectIds, { limit, offset, filter, sorts });
+      return success({
+        records: result.records,
+        pagination: { limit, offset, total: result.total },
+      });
+    }
+  }
+
+  // Cursor-based pagination mode (single workspace)
+  if (body.cursor !== undefined) {
+    const limit = Math.min(Number(body.limit || 50), 200);
+    const result = await listRecordsCursor(obj.id, {
+      limit,
+      cursor: body.cursor || null,
+      filter,
+      sorts,
+    });
+
+    return success({
+      records: result.records,
+      pagination: { nextCursor: result.nextCursor, hasMore: result.hasMore },
+    });
+  }
+
+  // Legacy offset-based pagination mode (single workspace)
+  const limit = Math.min(Number(body.limit || 50), 200);
+  const offset = Number(body.offset || 0);
 
   const result = await listRecords(obj.id, { limit, offset, filter, sorts });
 

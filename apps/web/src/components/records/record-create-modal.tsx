@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { toast } from "sonner";
 import type { AttributeType } from "@openclaw-crm/shared";
+import { validateRecordValues } from "@/lib/attribute-schema";
 import {
   Dialog,
   DialogContent,
@@ -43,18 +45,37 @@ export function RecordCreateModal({
   objectName,
 }: RecordCreateModalProps) {
   const [values, setValues] = useState<Record<string, unknown>>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
 
   function setValue(slug: string, val: unknown) {
     setValues((prev) => ({ ...prev, [slug]: val }));
+    // Clear error for this field on change
+    if (errors[slug]) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next[slug];
+        return next;
+      });
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+
+    // Validate
+    const validationErrors = validateRecordValues(attributes, values);
+    if (validationErrors) {
+      setErrors(validationErrors);
+      toast.error("Please fix the highlighted fields");
+      return;
+    }
+
     setSubmitting(true);
     try {
       await onSubmit(values);
       setValues({});
+      setErrors({});
       onClose();
     } finally {
       setSubmitting(false);
@@ -68,13 +89,14 @@ export function RecordCreateModal({
           <DialogTitle>Create {objectName}</DialogTitle>
           <DialogDescription>Fill in the fields to create a new record.</DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} noValidate className="space-y-4">
           {attributes.map((attr) => (
             <FieldInput
               key={attr.id}
               attr={attr}
               value={values[attr.slug]}
               onChange={(val) => setValue(attr.slug, val)}
+              error={errors[attr.slug]}
             />
           ))}
           <DialogFooter>
@@ -95,16 +117,18 @@ function FieldInput({
   attr,
   value,
   onChange,
+  error,
 }: {
   attr: AttributeDef;
   value: unknown;
   onChange: (val: unknown) => void;
+  error?: string;
 }) {
   const { type, title, isRequired, slug } = attr;
 
   return (
-    <div className="space-y-1.5">
-      <Label>
+    <div className={cn("space-y-1.5", error && "[&_input]:border-destructive [&_select]:border-destructive")}>
+      <Label className={error ? "text-destructive" : undefined}>
         {title}
         {isRequired && <span className="ml-1 text-destructive">*</span>}
       </Label>
@@ -247,6 +271,9 @@ function FieldInput({
           value={(value as string) ?? ""}
           onChange={(e) => onChange(e.target.value || null)}
         />
+      )}
+      {error && (
+        <p className="text-xs text-destructive">{error}</p>
       )}
     </div>
   );

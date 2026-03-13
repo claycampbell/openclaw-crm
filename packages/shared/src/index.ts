@@ -9,3 +9,7 @@ export { ATTRIBUTE_TYPES, ATTRIBUTE_TYPE_COLUMN_MAP } from "./constants/attribut
 export type { AttributeType } from "./constants/attribute-types";
 export { STANDARD_OBJECTS, DEAL_STAGES } from "./constants/standard-objects";
 export type { StandardObject, StandardAttribute } from "./constants/standard-objects";
+
+// Workspace hierarchy types
+export { WORKSPACE_TYPES, DEAL_PARTICIPATION_ROLES } from "./types/workspaces";
+export type { WorkspaceType, DealParticipationRole, WorkspaceWithHierarchy, WorkspaceBasic, WorkspaceTree, WorkspaceTreeCompany, DealParticipation } from "./types/workspaces";

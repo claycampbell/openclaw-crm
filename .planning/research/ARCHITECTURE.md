@@ -1,549 +1,622 @@
-# Architecture Research
+# Architecture Patterns
 
-**Domain:** AI-driven CRM — proactive automation, signal processing, multi-channel integration, document generation
-**Researched:** 2026-03-10
-**Confidence:** HIGH (codebase examined directly; patterns drawn from established CRM/AI architecture knowledge and existing service structure)
-
----
-
-## Standard Architecture for AI-Driven CRM
-
-### System Overview
-
-The evolution from reactive to proactive AI requires adding three new architectural layers on top of the existing foundation: a signal ingestion layer, a background processing layer, and an AI action engine.
-
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                        EXTERNAL SIGNAL SOURCES                           │
-│  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐   │
-│  │  Gmail/O365  │ │Google/O365   │ │  LinkedIn    │ │  Zoom/Phone  │   │
-│  │  (email)     │ │  Calendar    │ │  (social)    │ │  (telephony) │   │
-│  └──────┬───────┘ └──────┬───────┘ └──────┬───────┘ └──────┬───────┘   │
-└─────────┼────────────────┼────────────────┼────────────────┼────────────┘
-          │ webhooks/      │ webhooks/       │ webhooks/      │ webhooks/
-          │ polling        │ polling         │ polling        │ callbacks
-┌─────────▼────────────────▼────────────────▼────────────────▼────────────┐
-│                       INTEGRATION CONNECTORS                              │
-│  ┌────────────────────────────────────────────────────────────────────┐  │
-│  │  /api/v1/integrations/[provider]/webhook  (inbound webhook layer)  │  │
-│  │  /api/v1/integrations/[provider]/connect  (OAuth connect flow)     │  │
-│  │  services/integrations/[provider].ts       (per-provider adapter)  │  │
-│  └────────────────────────────┬───────────────────────────────────────┘  │
-└───────────────────────────────┼─────────────────────────────────────────┘
-                                │ normalize → enqueue
-┌───────────────────────────────▼─────────────────────────────────────────┐
-│                        SIGNAL EVENT BUS                                   │
-│  ┌────────────────────────────────────────────────────────────────────┐  │
-│  │  signal_events table (PostgreSQL)                                   │  │
-│  │  type: email_opened | email_received | stage_changed | meeting_held │  │
-│  │  payload: {recordId, workspaceId, metadata}                         │  │
-│  └────────────────────────────┬───────────────────────────────────────┘  │
-└───────────────────────────────┼─────────────────────────────────────────┘
-                                │ polled by
-┌───────────────────────────────▼─────────────────────────────────────────┐
-│                      BACKGROUND JOB PROCESSOR                            │
-│  ┌────────────────────────────────────────────────────────────────────┐  │
-│  │  job_queue table (PostgreSQL — pg-boss pattern)                     │  │
-│  │  Job types:                                                         │  │
-│  │    signal_evaluate   → score signal, determine if action needed     │  │
-│  │    ai_generate       → call LLM, produce asset draft                │  │
-│  │    email_send        → dispatch outbound email via provider         │  │
-│  │    email_sync        → pull new messages from Gmail/O365            │  │
-│  │    calendar_sync     → pull meetings from Google/O365 Calendar      │  │
-│  │    transcript_ingest → process Zoom/call recording                  │  │
-│  └────────────────────────────┬───────────────────────────────────────┘  │
-└───────────────────────────────┼─────────────────────────────────────────┘
-                                │ results stored as
-┌───────────────────────────────▼─────────────────────────────────────────┐
-│                    AI ACTION ENGINE (existing + extended)                 │
-│  ┌────────────────────────────────────────────────────────────────────┐  │
-│  │  Proactive triggers:                                                │  │
-│  │    crm-events.ts (existing) → extend with richer context            │  │
-│  │    automation-engine.ts (new) → evaluate rules → dispatch jobs      │  │
-│  │                                                                     │  │
-│  │  Document generators (new services):                                │  │
-│  │    services/documents/proposal.ts  → proposal drafts               │  │
-│  │    services/documents/brief.ts     → opportunity/meeting briefs     │  │
-│  │    services/documents/followup.ts  → post-meeting follow-ups        │  │
-│  │    services/documents/battlecard.ts → competitive intel             │  │
-│  │    services/documents/contract.ts  → SOW/contract generation        │  │
-│  └────────────────────────────┬───────────────────────────────────────┘  │
-└───────────────────────────────┼─────────────────────────────────────────┘
-                                │ stored in
-┌───────────────────────────────▼─────────────────────────────────────────┐
-│                    EXISTING CORE (foundation stays unchanged)             │
-│  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐   │
-│  │  EAV Records  │ │   AI Chat    │ │  Agent Chs   │ │  Notes/Tasks │   │
-│  │  + Query      │ │  (OpenRouter)│ │  (channels)  │ │  + Activity  │   │
-│  │  Builder      │ │  + Tools     │ │              │ │  Timeline    │   │
-│  └──────────────┘ └──────────────┘ └──────────────┘ └──────────────┘   │
-└─────────────────────────────────────────────────────────────────────────┘
-```
+**Domain:** AI-first CRM (brownfield v2.0 feature integration)
+**Researched:** 2026-03-11
+**Confidence:** HIGH (based on direct codebase analysis of 27 schema files, 44 services, 99 API endpoints)
 
 ---
 
-## Component Responsibilities
+## Existing Architecture Overview
 
-| Component | Responsibility | Talks To |
-|-----------|---------------|----------|
-| Integration Connectors | Receive inbound webhooks from Gmail, Calendar, LinkedIn, Zoom. Handle OAuth connect/callback flows. Normalize external events into internal signal format. | Signal Event Bus, Integration Credentials table |
-| Integration Credentials | Store per-workspace OAuth tokens (access + refresh), provider metadata. Workspace-scoped. | Database only |
-| Signal Event Bus | Ordered, persistent record of all external signals and internal CRM events (stage changes, record creation). Acts as audit log and trigger source. | Job Queue (enqueues evaluation jobs), Records table |
-| Background Job Queue | PostgreSQL-backed job queue (pg-boss pattern). Owns retry logic, failure handling, dead-letter. Runs within Next.js API route handlers triggered by Vercel Cron. | Signal Event Bus, AI Action Engine, Integration Adapters |
-| Automation Engine | Rule evaluator. Given a signal, determines which automation(s) should fire. Rules stored per-workspace. Enqueues `ai_generate` or `email_send` jobs. | Job Queue, Automation Rules table, Records |
-| AI Action Engine | Calls OpenRouter with deal context + template instruction. Returns structured draft (markdown or JSON). Stores draft in `ai_drafts` table. Posts to agent channels. | OpenRouter (via existing ai-chat.ts), Records, Notes, Agent Channels |
-| Document Generators | Specialized prompts for proposal, brief, follow-up, battlecard, contract. Each assembles context (deal data, company data, contact data, notes) then calls AI. | Records service, Notes service, OpenRouter |
-| Activity Timeline | Unified chronological log of all touchpoints: emails sent/received, calls, meetings, stage changes, AI actions. Replaces manual activity logging. | Signal Event Bus, Records, Integrations |
-| Lead Scoring | Aggregate engagement signals into a score per contact/deal. Recalculated on signal events. Stored as EAV attribute on record. | Signal Event Bus, Records service |
-| Approval Workflows | State machine for discount/contract approvals. States: `pending`, `approved`, `rejected`. Notifies stakeholders. Unblocks deal progression. | Records (status attribute), Notifications, Agent Channels |
-| Analytics / Forecasting | Read-only queries over closed deals and pipeline data. Win/loss patterns, rep coaching, pipeline forecast. Presented as dashboards. | Records (read-only), Record Values |
-| Inbound Lead Capture | Web form submission handler. Email-to-lead parser. Creates/updates People and Company records. Fires signal event. | Records service, Signal Event Bus |
+The codebase follows a clean layered architecture that all new features must respect:
+
+```
+[Browser] --> [Next.js Middleware] --> [API Route Handler]
+                                          |
+                                    [getAuthContext()]
+                                          |
+                                    [Service Layer]
+                                          |
+                                    [Drizzle ORM]
+                                          |
+                                    [PostgreSQL]
+```
+
+**Key invariants:**
+- Every API route calls `getAuthContext(req)` first for auth + workspace resolution
+- Every database query is scoped by `workspaceId` (multi-tenancy)
+- Services are the business logic layer -- called by both API routes and server components
+- The typed EAV pattern (`objects` -> `attributes` -> `records` -> `record_values`) is the core data model for all CRM entities
+- Background work enqueued to `background_jobs` table, polled by cron endpoint
+- Signal events written to `signal_events` table for automation triggers
+- AI generation produces drafts in `generated_assets` table for human review
 
 ---
 
-## Recommended Project Structure (additions to existing)
+## How New Features Integrate with Existing Architecture
 
-```
-apps/web/src/
-├── services/
-│   ├── integrations/           # Per-provider adapters
-│   │   ├── gmail.ts            # Gmail API: OAuth, watch(), sync, send
-│   │   ├── outlook.ts          # Microsoft Graph: OAuth, subscribe, sync, send
-│   │   ├── google-calendar.ts  # Google Calendar: OAuth, watch, sync
-│   │   ├── outlook-calendar.ts # Microsoft Graph calendar
-│   │   ├── linkedin.ts         # LinkedIn API: profile lookup, activity
-│   │   └── zoom.ts             # Zoom: recording webhooks, transcript fetch
-│   ├── documents/              # AI document generators
-│   │   ├── proposal.ts         # Proposal/deck generation
-│   │   ├── brief.ts            # Opportunity & meeting prep briefs
-│   │   ├── followup.ts         # Post-meeting follow-up drafts
-│   │   ├── battlecard.ts       # Competitive intelligence
-│   │   └── contract.ts         # SOW/contract generation
-│   ├── automation-engine.ts    # Rule evaluation → job dispatch
-│   ├── signals.ts              # Signal event write/read helpers
-│   ├── job-queue.ts            # Job enqueue/dequeue/ack helpers
-│   ├── lead-scoring.ts         # Engagement score calculator
-│   ├── activity-timeline.ts    # Unified timeline query
-│   └── email-sequences.ts      # Sequence scheduling and step execution
-├── app/api/v1/
-│   ├── integrations/
-│   │   ├── gmail/
-│   │   │   ├── connect/route.ts     # Initiate OAuth
-│   │   │   ├── callback/route.ts    # OAuth callback
-│   │   │   ├── webhook/route.ts     # Gmail push notifications
-│   │   │   └── disconnect/route.ts  # Revoke tokens
-│   │   ├── outlook/...             # Same pattern
-│   │   ├── google-calendar/...     # Same pattern
-│   │   ├── zoom/...                # Same pattern
-│   │   └── linkedin/...            # Same pattern
-│   ├── automations/
-│   │   ├── route.ts                # CRUD for automation rules
-│   │   └── [id]/route.ts
-│   ├── documents/
-│   │   ├── generate/route.ts       # Trigger document generation
-│   │   └── [id]/route.ts           # Fetch/update generated docs
-│   ├── sequences/
-│   │   ├── route.ts                # CRUD for email sequences
-│   │   └── [id]/
-│   │       ├── route.ts
-│   │       └── enroll/route.ts     # Enroll record in sequence
-│   ├── signals/
-│   │   └── route.ts                # Query signal history for a record
-│   └── cron/
-│       ├── sync/route.ts           # Cron: pull new emails/events
-│       ├── sequences/route.ts      # Cron: advance sequence steps
-│       └── scores/route.ts         # Cron: recalculate lead scores
-└── db/schema/
-    ├── integrations.ts             # oauth_connections, sync_cursors
-    ├── signals.ts                  # signal_events
-    ├── job-queue.ts                # jobs (pg-boss pattern)
-    ├── documents.ts                # ai_drafts
-    ├── sequences.ts                # sequences, sequence_steps, sequence_enrollments
-    └── automations.ts              # automation_rules
-```
+### Component 1: Job Execution Engine
 
-### Structure Rationale
+**What exists:**
+- `background_jobs` table with status enum (pending/running/completed/failed/cancelled), retry count, scheduled `runAt`
+- Two job queue implementations: `services/job-queue.ts` (with `registerJobHandler`/`executeJob`/`processJobs`) and `lib/job-queue.ts` (simpler `enqueueJob` used by automation-engine)
+- `instrumentation.ts` registers two handlers: `signal_evaluate` and `ai_generate` (placeholder)
+- Cron endpoint at `GET /api/v1/cron/jobs` gated by `CRON_SECRET` Bearer token
 
-- **services/integrations/:** One file per external provider. Each exports `connect()`, `syncEmails()`, `sendEmail()`, `watchInbox()` functions. Route handlers are thin — they call into these. This means adding a new provider (e.g., Outlook) is a new file, not scattered changes.
-- **services/documents/:** Each document type has its own context-assembly and prompt logic. They share a common `callLLM(prompt, config)` helper from the existing `ai-chat.ts` but have distinct schemas for what data to assemble.
-- **app/api/v1/cron/:** Vercel Cron-compatible endpoints. Each is a simple GET handler that processes a batch of pending work. Authorization checked via `CRON_SECRET` header (Vercel best practice).
-- **db/schema/:** One schema file per new domain. Keeps migration history clean and reviewable.
+**Critical bug found:** The `processJobs()` function in `services/job-queue.ts` (lines 96-101) does NOT call `executeJob()`. It marks every job as "completed" without invoking the registered handler. This means the entire job system is a no-op -- jobs are enqueued and silently discarded.
 
----
-
-## Architectural Patterns
-
-### Pattern 1: Transactional Outbox (Signal Event Bus)
-
-**What:** When a CRM event occurs (stage changed, record created, email received), write a row to `signal_events` in the same database transaction as the record mutation. A background job then reads unprocessed signals and dispatches work.
-
-**When to use:** Any time a state change should trigger automation. Avoids calling async side-effects inline in request handlers where failures lose the event.
-
-**Trade-offs:** Adds latency (event processed within seconds, not milliseconds). Requires a polling job or LISTEN/NOTIFY. Gain: events are never lost, retryable, auditable.
-
-**Example:**
+**Integration fix:**
 ```typescript
-// In records.ts updateRecord():
-await db.transaction(async (tx) => {
-  await tx.update(records).set(updated).where(eq(records.id, recordId));
-  await tx.insert(signalEvents).values({
-    workspaceId,
-    type: "stage_changed",
-    recordId,
-    payload: { from: oldStage, to: newStage },
-    processedAt: null,
-  });
+// In processJobs(), replace the auto-complete with:
+const handled = await executeJob(job.type, {
+  ...job.payload as Record<string, unknown>,
+  workspaceId: job.workspaceId,
 });
-```
-
-### Pattern 2: PostgreSQL-Backed Job Queue (pg-boss pattern)
-
-**What:** Store jobs as rows in a `jobs` table with status (`pending`, `running`, `completed`, `failed`), retry count, and scheduled time. A cron-triggered worker polls for pending jobs, claims them with a status update (optimistic locking), executes them, then marks complete.
-
-**When to use:** Background tasks in a PostgreSQL-only stack. Avoids Redis/BullMQ/SQS dependency. Works with Vercel Cron (HTTP GET every minute triggers the worker).
-
-**Trade-offs:** Not real-time (up to 60s latency with minute-granularity cron). Cannot do sub-second scheduling. Suitable for async AI generation, email sends, and sync tasks where near-real-time is fine. The pg-boss library implements this pattern well and can be added as a dependency.
-
-**Example:**
-```typescript
-// Enqueue job
-await db.insert(jobs).values({
-  workspaceId,
-  type: "ai_generate",
-  payload: { recordId, documentType: "proposal" },
-  status: "pending",
-  runAt: new Date(),
-});
-
-// Worker (called by cron route)
-const batch = await db
-  .update(jobs)
-  .set({ status: "running", startedAt: new Date() })
-  .where(and(eq(jobs.status, "pending"), lte(jobs.runAt, new Date())))
-  .returning();
-
-for (const job of batch) {
-  try {
-    await processJob(job);
-    await db.update(jobs).set({ status: "completed" }).where(eq(jobs.id, job.id));
-  } catch (err) {
-    await db.update(jobs).set({
-      status: job.retryCount < 3 ? "pending" : "failed",
-      retryCount: job.retryCount + 1,
-      runAt: addMinutes(new Date(), 5 * (job.retryCount + 1)),
-    }).where(eq(jobs.id, job.id));
-  }
+if (!handled) {
+  console.warn(`[jobs] No handler for job type: ${job.type}`);
 }
 ```
 
-### Pattern 3: Provider Adapter Pattern (Integration Connectors)
+**Additional fixes needed:**
+- Add `FOR UPDATE SKIP LOCKED` to the job claim query to prevent double-processing when multiple cron hits overlap
+- Consolidate the two `enqueueJob` functions (lib vs service) -- the automation engine imports from `@/lib/job-queue` which has a different signature than `services/job-queue.ts`
+- The `retries` column is stored as `text` (not integer) -- works but should be handled carefully in comparisons
 
-**What:** Each external provider (Gmail, Outlook, Zoom, etc.) is wrapped in a single adapter service that normalizes its API into the internal domain model. All callers interact with the adapter, never directly with the provider SDK.
+**Communicates with:** All components enqueue jobs here. Cron endpoint triggers processing.
 
-**When to use:** Any time there are 2+ email providers, or the API might change. Keeps swap cost low.
-
-**Trade-offs:** Adds one layer of indirection. Worth it because Gmail API and Microsoft Graph have different token refresh flows, different webhook shapes, and different sync cursor patterns.
-
-**Example:**
-```typescript
-// services/integrations/gmail.ts
-export interface EmailMessage {
-  id: string; externalId: string; from: string; to: string[];
-  subject: string; bodyHtml: string; bodyText: string;
-  receivedAt: Date; threadId: string;
-}
-
-export async function syncNewMessages(
-  workspaceId: string, connectionId: string
-): Promise<EmailMessage[]> { /* Gmail-specific impl */ }
-
-// services/integrations/outlook.ts — same interface, different impl
-export async function syncNewMessages(...): Promise<EmailMessage[]> { /* Graph API impl */ }
+**Data flow:**
+```
+[Any component] --> enqueueJob() --> background_jobs table
+                                          |
+[Cron GET /api/v1/cron/jobs] --> processJobs() --> executeJob() --> registered handler
 ```
 
-### Pattern 4: Document Generation via Context Assembly
+---
 
-**What:** Before calling an LLM to generate a document (proposal, brief, etc.), assemble all relevant context from the EAV store: deal attributes, linked company data, linked contacts, recent notes, stage history, email thread excerpts. Pass this as structured context in the system prompt, then use a document-type-specific instruction prompt.
+### Component 2: Signal-Automation Pipeline
 
-**When to use:** All AI document generation. The quality of LLM output is proportional to the quality of context provided.
+**What exists:**
+- `signal_events` table (immutable log with workspace_id, record_id, type, provider, payload, actor_id)
+- `processed_signals` table (deduplication by provider + signal_id unique index)
+- `writeSignalEvent()` in `services/signals.ts` -- fire-and-forget insert
+- `automation_rules` table with `trigger_type`, `conditions` JSONB, `action_type` enum, `action_payload` JSONB
+- `automation-engine.ts` with hardcoded if/else rules (stage_changed -> proposal, meeting_ended -> followup, record_created -> opportunity_brief, note_added -> competitor detection, email_received -> sequence stop)
+- `crm-events.ts` that posts to agent channels and triggers close flow / approval evaluation
 
-**Trade-offs:** More database queries per generation call. Acceptable because generation is async (background job), not in a request-response cycle.
+**Gap identified:** The `automation_rules` table exists with a rich condition/action model, but `evaluateSignalForGeneration()` uses hardcoded logic and never queries this table. The two systems are disconnected.
 
-**Example:**
+**Integration approach:**
+1. Keep existing hardcoded rules as "system rules" (always-on, not editable)
+2. Add a second evaluation pass that queries `automation_rules`:
+   ```sql
+   SELECT * FROM automation_rules
+   WHERE workspace_id = $1
+     AND trigger_type = $2
+     AND enabled = true
+   ```
+3. Evaluate `conditions` JSONB against signal payload (simple field/operator/value matching)
+4. Dispatch `action_type` with merged `action_payload` to job queue
+5. New action types to add to `automationActionEnum`: `send_webhook`, `update_field`, `assign_owner`
+
+**Signal emission gap:** `writeSignalEvent()` writes to the table but does NOT enqueue a `signal_evaluate` job. The automation engine only runs if something explicitly enqueues that job. This means signals are logged but never automatically evaluated unless a caller also enqueues the job.
+
+**Fix:** After `writeSignalEvent()`, auto-enqueue a `signal_evaluate` job:
 ```typescript
-// services/documents/proposal.ts
+export async function writeSignalEvent(input: SignalEventInput): Promise<string> {
+  const [event] = await db.insert(signalEvents).values({...}).returning({ id: signalEvents.id });
+  await enqueueJob("signal_evaluate", { signalEventId: event.id }, { workspaceId: input.workspaceId });
+  return event.id;
+}
+```
+
+**Data flow:**
+```
+[Integration webhook / CRM CRUD] --> writeSignalEvent() --> signal_events + signal_evaluate job
+                                                                 |
+                                                       evaluateSignalForGeneration()
+                                                            /            \
+                                                [hardcoded rules]    [automation_rules query]
+                                                            \            /
+                                                          enqueueJob()
+```
+
+---
+
+### Component 3: AI Asset Generation Pipeline
+
+**What exists:**
+- `generated_assets` table with 11 asset types, 7 status values, both `content` (markdown) and `structuredContent` (JSON) fields, approval tracking (approvedBy, rejectedBy, rejectionNote)
+- `generated-assets.ts` service with createDraft, listDrafts, getAsset, approveDraft, rejectDraft
+- Placeholder `ai_generate` handler in `instrumentation.ts` that creates "[Placeholder draft]" strings in non-production
+- OpenRouter integration in `ai-chat.ts` with workspace-configurable API key and model
+- `services/documents/` directory already exists with `asset-registry.ts`
+- `AiGeneratePayload` type in `lib/job-queue.ts` defines: documentType, recordId, contextTier, plus optional meetingId, triggerType, noteText, competitorName, enrollmentId
+
+**What is missing:** Actual generation logic. No prompt templates, no context assembly, no OpenRouter call in the generation path.
+
+**Integration approach:**
+
+Create `services/generators/` with one file per asset type. Each generator follows this pattern:
+
+```typescript
+// services/generators/proposal.ts
 export async function generateProposal(
-  workspaceId: string, dealId: string
-): Promise<string> {
-  const deal = await getRecord("deals", dealId);
-  const company = await getRecord("companies", deal.values.company_id);
-  const contacts = await listLinkedRecords("people", dealId);
-  const notes = await getNotesForRecord(dealId);
-  const recentEmails = await getEmailsForRecord(dealId, { limit: 5 });
+  workspaceId: string,
+  recordId: string,
+  tier: "light" | "full"
+): Promise<void> {
+  // 1. Assemble context from EAV
+  const deal = await getRecord(workspaceId, recordId);
+  const notes = tier === "full" ? await getNotesForRecord(recordId) : [];
+  const timeline = tier === "full" ? await getActivityTimeline(recordId) : [];
 
-  const context = assembleContext({ deal, company, contacts, notes, recentEmails });
-  const prompt = `Based on the following CRM data, generate a professional proposal...
+  // 2. Build prompt from template
+  const prompt = buildProposalPrompt({ deal, notes, timeline });
 
-  ${context}`;
+  // 3. Call OpenRouter (non-streaming -- background job, no timeout pressure)
+  const config = await getWorkspaceAIConfig(workspaceId);
+  const result = await callOpenRouter(config, prompt);
 
-  const config = await getAIConfig(workspaceId);
-  return callLLM(config, prompt);
+  // 4. Store as draft
+  await createDraft({
+    workspaceId,
+    recordId,
+    assetType: "proposal",
+    content: result.markdown,
+    structuredContent: result.structured,
+    modelUsed: config.model,
+    promptVersion: "v1",
+  });
+
+  // 5. Notify deal owner
+  await createNotification(workspaceId, dealOwnerId, {
+    type: "asset_generated",
+    title: "Proposal draft ready for review",
+    url: `/inbox?asset=${assetId}`,
+  });
 }
 ```
 
-### Pattern 5: Dual-Path AI Response (Proactive vs Interactive)
+**Build order within this component:** opportunity_brief first (simplest, light context), then followup (triggered by meeting_ended), then proposal (full context), then battlecard (needs competitor detection integration).
 
-**What:** The existing AI system is interactive (user sends message, AI replies in chat). Proactive AI runs without a user prompt — triggered by events, outputs stored as agent channel messages or `ai_drafts`, surfaced in the UI as notifications. These two paths share the same LLM infrastructure but diverge at the trigger layer.
+**Key decision:** Extract `callOpenRouter()` from `ai-chat.ts` into a shared utility. The chat service uses streaming; generators use non-streaming. Both share the same workspace config resolution.
 
-**When to use:** Proactive actions always use the background job path. Interactive chat stays on the SSE streaming path.
+---
 
-**Trade-offs:** Two code paths to maintain. The payoff is that proactive AI doesn't block the request cycle and can generate longer, richer content without timeout pressure.
+### Component 4: Integration Sync (Gmail/Outlook/Calendar)
+
+**What exists:**
+- Full OAuth flows for Gmail, Outlook, Google Calendar, Outlook Calendar, Zoom, LinkedIn
+- `integration_tokens` table with AES-256-GCM encrypted tokens, `syncCursor`, `providerMetadata`, `lastSyncAt`
+- `email_messages` table with deduplication by (workspace_id, provider, external_id), thread_id, direction, tracking fields
+- `calendar_events` table with lifecycle flags (prepJobEnqueued, endedSignalEmitted)
+- Token manager (`token-manager.ts`) with store/get/revoke/refresh
+- Gmail service with OAuth, scope requesting (readonly + send + modify + calendar), `initiateOAuth`, `handleCallback`
+- Cron endpoints at `/api/v1/cron/gmail-sync`, `/api/v1/cron/outlook-sync`, `/api/v1/cron/calendar-sync`
+- `markSignalProcessed()` for webhook deduplication
+
+**What is missing:** The sync cron endpoints need to iterate active integrations and perform delta sync. The Gmail service has OAuth but the delta sync function body needs implementation.
+
+**Integration approach for Gmail sync:**
+```
+1. Query integration_tokens WHERE provider = 'gmail' AND status = 'active'
+2. For each token:
+   a. refreshToken() if expired
+   b. Call Gmail history.list(startHistoryId = syncCursor)
+   c. For each new message:
+      - Fetch message metadata (not full body -- store snippet only per schema design)
+      - Deduplicate via processed_signals (provider: 'gmail', signalId: messageId)
+      - Upsert into email_messages
+      - matchEmailToRecord() -- query record_values for email attribute matching sender
+      - writeSignalEvent("email_received", { recordId, fromEmail, subject })
+   d. Update syncCursor to new historyId
+   e. Update lastSyncAt
+```
+
+**Email-to-record matching** uses the existing EAV query pattern:
+```typescript
+// Find People/Companies records with matching email attribute
+const matches = await db
+  .select({ recordId: recordValues.recordId })
+  .from(recordValues)
+  .innerJoin(attributes, eq(attributes.id, recordValues.attributeId))
+  .where(and(
+    eq(attributes.type, "email"),
+    eq(recordValues.textValue, senderEmail),
+    // scope to workspace via join to records
+  ));
+```
+
+**Calendar event processing:** The `calendar_events` table has `endedSignalEmitted` flag. A cron job (or part of calendar sync) queries events where `end_at < NOW() AND ended_signal_emitted = false`, emits `meeting_ended` signals, sets the flag. This triggers the automation engine to generate meeting follow-ups.
+
+---
+
+### Component 5: Analytics Engine
+
+**What exists:** Four analytics services: `win-loss.ts`, `rep-coaching.ts`, `forecasting.ts`, `next-best-action.ts`. Analytics API routes. Dashboard pages with data threshold gates.
+
+**Integration approach:** Analytics are pure read-path -- SQL aggregation queries against existing tables. No new tables needed.
+
+- **Win/loss:** Aggregate deals by outcome (won/lost stage), group by time period, rep, amount range. Query `records` + `record_values` for deal stage + amount + owner.
+- **Forecasting:** Pipeline weighting by stage. Sum deal amounts weighted by stage probability. Query current deal records.
+- **Coaching:** Activity pattern analysis. Count signal_events by type per rep per time period. Compare to won-deal benchmarks.
+- **Activity scoring** (see Component 7) feeds into coaching and hot leads.
+
+For expensive queries, consider a `analytics_cache` pattern: store computed results as JSONB keyed by (workspace_id, report_type, date_range), refresh on demand or via cron.
+
+---
+
+### Component 6: Email Compose and Thread View
+
+**What exists:**
+- `email_messages` table with thread_id, direction, snippet, from/to/cc, tracking fields
+- Gmail service with send capability (`gmail.users.messages.send` scope requested)
+- Integration tokens with send permissions
+- Record detail pages at `/(dashboard)/objects/[slug]/[id]`
+
+**Integration approach:**
+- Add "Email" tab to record detail page, showing threads linked via `email_messages.recordId`
+- Thread view: group by `thread_id`, order by `receivedAt`, display with collapsible message cards
+- Full email body fetched on-demand from provider API (only snippet stored locally -- per schema design decision in `email_messages.snippet` comment)
+- Compose form hits new `POST /api/v1/records/[id]/email` route:
+  1. Resolve user's integration token for Gmail/Outlook
+  2. Send via provider API
+  3. Insert outbound record in `email_messages` with direction: "outbound"
+  4. `writeSignalEvent("email_sent", { recordId, toEmail, subject })`
+
+**Dependency:** Requires integration sync (Component 4) to be working for inbound email display. But compose can work independently if the user has a connected Gmail/Outlook token.
+
+---
+
+### Component 7: Activity Scoring and Hot Leads
+
+**What exists:**
+- `lead_score` job type already dispatched by automation-engine when People/Contacts records are created
+- Signal events capture all activity types (email_received, meeting_ended, stage_changed, note_added)
+- EAV model supports adding computed attributes to records
+
+**Integration approach:**
+
+Two options for score storage:
+
+**Option A (recommended): EAV attribute.** Add a system-managed "Activity Score" attribute (type: number) to People and Deals objects. Scores are stored in `record_values.number_value`. This means existing filtering, sorting, and table display work on scores automatically -- no new UI needed to display scores in record tables.
+
+**Option B: Dedicated table.** New `record_scores` table. Cleaner separation but requires custom display integration everywhere scores appear.
+
+**Scoring algorithm:**
+```
+score = sum of weighted signal events in trailing 30 days:
+  email_received: 5 points
+  email_sent: 3 points (we initiated)
+  email_opened: 2 points
+  email_clicked: 4 points
+  meeting_held: 10 points
+  note_added: 2 points
+  stage_changed: 8 points
+  call_recorded: 7 points
+```
+
+**Recalculation trigger:** Enqueue `lead_score` job on relevant signal events. The handler queries `signal_events WHERE record_id = X AND created_at > 30_days_ago`, computes weighted sum, writes to EAV attribute.
+
+**Hot leads dashboard:** Query records ordered by score attribute descending. Use existing `query-builder.ts` filtering infrastructure.
+
+---
+
+### Component 8: Team Collaboration (@mentions, Comments, Saved Views)
+
+**What exists:**
+- Chat channels with agent messages (conversations + messages tables)
+- Notifications table targeting individual users
+- Notes on records (TipTap rich text)
+- Workspace members with roles
+
+**New tables needed:**
+
+```sql
+-- Comments: lightweight, @mentionable, threaded
+comments (id, workspace_id, record_id, user_id, content, parent_id, mentions JSONB, created_at)
+
+-- Saved views: persisted filter/sort/column configurations
+saved_views (id, workspace_id, object_id, user_id, name, filters JSONB, sort JSONB, columns JSONB, is_shared BOOLEAN, created_at)
+```
+
+**Integration approach:**
+- **Comments** are distinct from Notes. Notes are rich-text documents (TipTap). Comments are short threaded text with @mentions. Both appear on the record detail page in separate sections.
+- **@mentions:** Parse `@username` in comment text, resolve to user IDs, create notification rows. Frontend uses a mention autocomplete (user list from workspace members).
+- **Saved views:** The existing `FilterGroup`/`FilterCondition` types from `packages/shared` define the filter JSONB shape. The saved_views table stores these plus sort order and visible columns. UI adds "Save View" / "Load View" controls to record table pages.
+- No real-time collaboration needed (out of scope). Polling-based notification check is sufficient.
+
+---
+
+### Component 9: Outbound Webhooks
+
+**What exists:** No outbound webhook infrastructure. Integration webhook endpoints exist only for INBOUND webhooks (Gmail Pub/Sub, Zoom recording callbacks).
+
+**New tables needed:**
+
+```sql
+-- Webhook subscriptions
+webhook_subscriptions (id, workspace_id, url, secret, events TEXT[], enabled, created_by, created_at)
+
+-- Delivery log with retry tracking
+webhook_deliveries (id, subscription_id, event_type, payload JSONB, status, response_code, attempts, next_retry_at, created_at)
+```
+
+**Integration approach:**
+- Add `send_webhook` to `automationActionEnum` for rule-driven webhooks
+- Also add direct event dispatch: in `crm-events.ts`, after record create/update, check `webhook_subscriptions WHERE workspace_id = X AND events @> ARRAY[event_type] AND enabled = true`
+- Enqueue `webhook_send` job for each matching subscription
+- Webhook send handler: POST JSON payload to URL, include HMAC-SHA256 signature in `X-Webhook-Signature` header (using subscription.secret), record response in `webhook_deliveries`
+- Retry: 3 attempts with exponential backoff (1min, 5min, 30min)
+- Admin UI at Settings > Webhooks for subscription CRUD
+
+---
+
+### Component 10: Visual Workflow Automation Builder
+
+**What exists:** `automation_rules` table with CRUD-ready schema. API routes at `/api/v1/automations`. Automation engine evaluates rules on signal events.
+
+**Integration approach:** This is primarily a frontend feature. The backend already supports the data model.
+
+- Build a step-based UI: (1) trigger selector (pick signal type from dropdown), (2) condition builder (field/operator/value rows), (3) action selector (pick from `automationActionEnum`)
+- Use a simple linear flow UI (trigger -> filter -> action) rather than a full node-graph editor. The existing `automation_rules` schema supports single-trigger, single-action rules. This is sufficient for v2.0.
+- If multi-step workflows are needed later, add a `workflow_steps` table chaining rules. Defer this complexity.
+- Frontend needs: list rules, create, update, delete, toggle enabled -- all standard CRUD against existing `/api/v1/automations` routes
+
+---
+
+### Component 11: Import/Export Improvements
+
+**What exists:** `csv-utils.ts` in lib. Basic record CRUD in services.
+
+**Integration approach:**
+- Import is a multi-step flow: (1) upload CSV, (2) preview + map columns to object attributes, (3) configure duplicate handling (skip/update/create), (4) process
+- Large imports run as background jobs: store CSV content in job payload or temp storage, enqueue `import_records` job, track progress
+- Duplicate detection: query `record_values` for matching email/phone/name attributes -- uses the same EAV lookup pattern as email-to-record matching
+- Export: query records with selected attributes, stream CSV response from API route
+- Register `import_records` handler in `instrumentation.ts`
+
+---
+
+## Component Boundaries Summary
+
+| Component | Owns (Tables) | Reads From | Writes To |
+|-----------|---------------|------------|-----------|
+| Job Engine | background_jobs | -- | (dispatches to handlers) |
+| Signal Pipeline | signal_events, processed_signals, automation_rules | signal_events | background_jobs |
+| AI Generation | generated_assets (drafts) | records, record_values, notes, timeline | generated_assets, notifications |
+| Integration Sync | email_messages, calendar_events | integration_tokens | signal_events |
+| Analytics | -- (pure reads) | records, record_values, signal_events, email_messages | (optional cache) |
+| Email Compose | email_messages (outbound) | integration_tokens, records | email_messages, signal_events |
+| Activity Scoring | record_values (score attribute) | signal_events, email_messages, calendar_events | record_values |
+| Team Collab | comments, saved_views | users, records | comments, notifications, saved_views |
+| Webhooks | webhook_subscriptions, webhook_deliveries | automation_rules, crm_events | webhook_deliveries |
+| Workflow Builder | -- (UI only) | automation_rules | automation_rules |
+| Import/Export | -- (uses jobs) | records, record_values | records, record_values |
+
+---
+
+## End-to-End Data Flow Example
+
+**Scenario:** Deal moves to "Proposal" stage.
 
 ```
-Interactive path:
-User message → SSE stream → tool calls → inline response in chat
-
-Proactive path:
-Signal event → job queue → AI generate → ai_drafts table → agent channel message → UI notification
+1. User drags deal card on Kanban board
+2. Frontend calls PATCH /api/v1/records/:id
+3. API route -> records service -> updates record_values (stage attribute)
+4. handleRecordUpdated() fires (crm-events.ts):
+   a. Posts "Deal stage updated: Acme Corp -> Proposal" to #deals channel via Aria
+   b. evaluateDealForApproval() checks approval rules
+   c. writeSignalEvent("stage_changed", { from: "Discovery", to: "Proposal", recordId })
+5. writeSignalEvent() auto-enqueues signal_evaluate job [FIX NEEDED]
+6. Cron fires -> processJobs() picks up signal_evaluate job -> executeJob() [FIX NEEDED]
+7. evaluateSignalForGeneration() runs:
+   a. Hardcoded rule: /proposal/ matches newStage -> enqueue ai_generate(type: "proposal")
+   b. User rules: query automation_rules for stage_changed trigger -> maybe more jobs
+8. Next cron tick -> processJobs() picks up ai_generate job
+9. Proposal generator:
+   a. assembleContext(recordId, "full") -> deal fields, company, contacts, notes, timeline
+   b. Builds prompt from proposal template
+   c. Calls OpenRouter (non-streaming) -> structured proposal content
+   d. createDraft() -> generated_assets row (status: "draft")
+   e. Creates notification for deal owner
+10. User sees notification -> opens inbox -> reviews proposal draft
+11. User approves -> approveDraft() -> status: "approved"
+12. Webhook subscriptions checked -> if "asset_approved" event matched -> enqueue webhook_send
 ```
 
 ---
 
-## Data Flow
-
-### Signal Flow: Email Received → Proactive Follow-Up Draft
+## Dependency Graph and Build Order
 
 ```
-Gmail webhook → /api/v1/integrations/gmail/webhook
-    ↓
-Verify signature + parse payload
-    ↓
-services/integrations/gmail.ts → fetchMessage(messageId)
-    ↓
-Normalize to EmailMessage + determine linked record (match by contact email)
-    ↓
-INSERT signal_events (type: "email_received", recordId, payload)
-    ↓
-INSERT jobs (type: "signal_evaluate", signalEventId)
-    ↓
-[async — Vercel Cron fires within 60s]
-    ↓
-/api/v1/cron/sync → claim job → automation-engine.ts evaluateSignal()
-    ↓
-Rule match: "email received on deal in Negotiation stage → generate follow-up"
-    ↓
-INSERT jobs (type: "ai_generate", documentType: "followup", recordId)
-    ↓
-[next cron tick]
-    ↓
-/api/v1/cron/sync → claim job → services/documents/followup.ts
-    ↓
-Assemble context (deal + contacts + email thread) → call OpenRouter
-    ↓
-INSERT ai_drafts (recordId, type: "followup", content: "...", status: "draft")
-    ↓
-postAgentMessage(dealsChannel, "I drafted a follow-up for [deal]. Review it here.")
-    ↓
-UI: agent channel shows notification → user clicks → sees draft → approves/edits → sends
+Job Execution Engine Fix [MUST BE FIRST -- everything depends on jobs actually running]
+    |
+    +-- Signal Pipeline Wiring [depends on jobs for signal_evaluate]
+    |       |
+    |       +-- AI Generation Pipeline [depends on signals triggering ai_generate jobs]
+    |       |
+    |       +-- Integration Sync [depends on signals for event emission]
+    |       |
+    |       +-- Activity Scoring [depends on signals for score triggers]
+    |       |
+    |       +-- Outbound Webhooks [depends on signals for event dispatch]
+    |
+    +-- Import/Export [depends on jobs for async processing]
+
+Independent of Signal Pipeline (can build in parallel):
+    - Analytics Engine (pure SQL reads, no dependencies)
+    - Email Compose (needs integration tokens, not signals)
+    - Team Collaboration (standalone tables + notifications)
+    - Visual Workflow Builder (CRUD UI against existing table)
 ```
 
-### Signal Flow: Deal Stage Change → Proposal Generation
+**Recommended phase structure:**
 
-```
-PATCH /api/v1/objects/deals/records/[id] (stage attribute changed)
-    ↓
-services/records.ts updateRecord() → detect stage change in changedFields
-    ↓
-handleRecordUpdated() (existing crm-events.ts, fire-and-forget)
-    ↓ ALSO:
-INSERT signal_events (type: "stage_changed", from: "Discovery", to: "Proposal")
-INSERT jobs (type: "signal_evaluate")
-    ↓
-automation-engine.ts: rule "stage = Proposal → generate proposal draft"
-    ↓
-INSERT jobs (type: "ai_generate", documentType: "proposal", recordId)
-    ↓
-services/documents/proposal.ts → assemble context → call OpenRouter
-    ↓
-INSERT ai_drafts + notify rep via agent channel
+1. **Job Execution + Signal Wiring** (foundation) -- Fix processJobs() to call executeJob(), add FOR UPDATE SKIP LOCKED, wire writeSignalEvent() to auto-enqueue signal_evaluate. Also wire automation_rules evaluation. Estimated: 2-3 days. Unblocks everything.
+
+2. **AI Generation Pipeline** (highest differentiating value) -- Build generators: opportunity_brief, followup, proposal, battlecard. Extract callOpenRouter() from ai-chat.ts. Register handlers in instrumentation.ts. Estimated: 5-7 days.
+
+3. **Integration Sync** (data foundation for signals) -- Gmail delta sync first, then Outlook, then Calendar. Email-to-record matching. Calendar meeting_ended signal emission. Estimated: 5-7 days.
+
+4. **Analytics + Activity Scoring** (builds on accumulated data) -- Real calculations for win/loss, coaching, forecast. Activity score as EAV attribute. Hot leads view. Estimated: 3-5 days.
+
+5. **Email Compose + Webhooks + Workflow Builder + Team Collab + Import/Export** (independent features) -- Can be parallelized. Each is 2-4 days. Order by business priority.
+
+---
+
+## Patterns to Follow
+
+### Pattern 1: Service + API Route + Job Handler
+
+Every new feature follows the same three-layer pattern established in the codebase:
+
+```typescript
+// 1. Service: apps/web/src/services/my-feature.ts
+export async function doThing(workspaceId: string, params: Params) {
+  // business logic + DB queries scoped by workspaceId
+}
+
+// 2. API Route: apps/web/src/app/api/v1/my-feature/route.ts
+export async function POST(req: NextRequest) {
+  const ctx = await getAuthContext(req);
+  if (!ctx) return unauthorized();
+  const body = await req.json();
+  const result = await doThing(ctx.workspaceId, body);
+  return success(result);
+}
+
+// 3. Job Handler: apps/web/src/instrumentation.ts
+registerJobHandler("my_job_type", async (payload) => {
+  const { workspaceId, ...rest } = payload as { workspaceId: string; [k: string]: unknown };
+  await doThing(workspaceId, rest);
+});
 ```
 
-### Email Sync Flow (Polling Pattern)
+### Pattern 2: Signal-Driven Reactivity
 
-```
-/api/v1/cron/sync (GET, fired by Vercel Cron every 5min)
-    ↓
-For each workspace with connected Gmail/O365:
-    Load sync cursor (last processed historyId / deltaToken)
-    Call provider API: fetch messages since cursor
-    For each new message:
-        Match sender to People record (by email attribute)
-        INSERT email_messages (stored in integration tables, not EAV)
-        INSERT signal_events (type: email_received | email_sent)
-        UPDATE sync cursor
-    ↓
-Enqueue signal_evaluate jobs for new signal events
+When a CRM event should trigger downstream behavior:
+
+```typescript
+import { writeSignalEvent } from "@/services/signals";
+
+// After the primary action completes:
+await writeSignalEvent({
+  workspaceId,
+  recordId,
+  type: "my_event_type",
+  payload: { relevant: "data" },
+});
+// Signal auto-enqueues signal_evaluate job [after fix]
+// Automation engine routes to appropriate handler
 ```
 
-### OAuth Connect Flow
+### Pattern 3: EAV Cross-Entity Lookup
 
+When you need to find records by attribute value (e.g., find contact by email for email-to-record matching):
+
+```typescript
+const matches = await db
+  .select({ recordId: recordValues.recordId })
+  .from(recordValues)
+  .innerJoin(attributes, eq(attributes.id, recordValues.attributeId))
+  .innerJoin(records, eq(records.id, recordValues.recordId))
+  .where(and(
+    eq(records.workspaceId, workspaceId),
+    eq(attributes.type, "email"),
+    eq(recordValues.textValue, targetEmail)
+  ));
 ```
-User clicks "Connect Gmail"
-    ↓
-GET /api/v1/integrations/gmail/connect
-    ↓
-Generate state token → store in session → redirect to Google OAuth URL
-    ↓
-User authorizes → Google redirects to /api/v1/integrations/gmail/callback?code=...
-    ↓
-Exchange code for access + refresh tokens
-    ↓
-INSERT oauth_connections (workspaceId, provider: "gmail", accessToken, refreshToken, expiresAt)
-    ↓
-Register Gmail push notification watch (POST gmail.users.watch)
-    ↓
-Redirect to settings page: "Gmail connected"
+
+### Pattern 4: Cron Endpoint for Periodic Work
+
+All periodic work uses the same pattern as the existing `/api/v1/cron/jobs` endpoint:
+
+```typescript
+export async function GET(req: NextRequest) {
+  const cronSecret = process.env.CRON_SECRET;
+  if (cronSecret) {
+    const authHeader = req.headers.get("authorization");
+    if (authHeader !== `Bearer ${cronSecret}`) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+  }
+  const result = await doPeriodicWork();
+  return NextResponse.json({ result, timestamp: new Date().toISOString() });
+}
 ```
 
 ---
 
-## Scaling Considerations
-
-| Scale | Architecture Adjustments |
-|-------|--------------------------|
-| 0-1k workspaces | Single PostgreSQL, pg-boss job queue, Vercel Cron — this is fine for launch |
-| 1k-10k workspaces | Add connection pooling (PgBouncer). Job queue becomes the bottleneck — partition `jobs` table by workspace, increase cron frequency with multiple workers. Consider Redis for rate-limit tracking per integration provider. |
-| 10k+ workspaces | External job queue (BullMQ + Redis or SQS). Dedicated worker process separate from Next.js. Read replicas for analytics queries. |
-
-### Scaling Priorities
-
-1. **First bottleneck:** Job queue under load — many workspaces, each with active integrations, generates high job volume. Fix: batch processing, table partitioning, dedicated worker.
-2. **Second bottleneck:** OpenRouter API rate limits per API key — many concurrent AI generation jobs hit the same key. Fix: per-workspace API keys (already in place), request queuing with exponential backoff.
-3. **Third bottleneck:** Gmail/O365 API rate limits — providers impose per-user and per-app quotas. Fix: sync cursor with delta queries (not full inbox scans), honor `Retry-After` headers, workspace-level token refresh queuing.
-
----
-
-## Anti-Patterns
+## Anti-Patterns to Avoid
 
 ### Anti-Pattern 1: Inline AI Generation in Request Handlers
 
-**What people do:** Call OpenRouter directly inside a POST handler when a deal stage changes — `await generateProposal(...)` inside the route.
+**What:** Calling OpenRouter directly inside a POST/PATCH handler.
+**Why bad:** Route handlers have 30-60s timeout limits. LLM generation can take 30-90s. Users get 504s. No retry on failure.
+**Instead:** Enqueue an `ai_generate` job and return immediately. The background worker handles generation.
 
-**Why it's wrong:** Route handlers have a request timeout (Vercel default: 60s function timeout). LLM generation can take 30-90 seconds for complex documents. Users get 504s or partial results. There's no retry on failure.
+### Anti-Pattern 2: Direct DB Writes Without Signal Emission
 
-**Do this instead:** The route handler enqueues a job and returns immediately (202 Accepted). The background worker does the generation. The result appears in the agent channel when done.
+**What:** Updating records without calling `writeSignalEvent()`.
+**Why bad:** Automations, scoring, and webhooks never fire. The system becomes inconsistent.
+**Instead:** Every meaningful state change must emit a signal. The `crm-events.ts` service already handles this for record create/update -- extend it for new event types.
 
-### Anti-Pattern 2: Storing Email Bodies in EAV record_values
+### Anti-Pattern 3: Querying Without Workspace Scope
 
-**What people do:** Create a `body` attribute on a `People` object and store email content as a `text_value` per email.
+**What:** Database queries missing `WHERE workspace_id = ?`.
+**Why bad:** Data leakage between tenants.
+**Instead:** Every query must include workspace scope. The `AuthContext.workspaceId` provides the value.
 
-**Why it's wrong:** Emails are append-only log data with large bodies, not structured CRM attributes. Querying the EAV model for email threads is inefficient. The `record_values` table is designed for sparse structured attributes, not for large text blobs at volume.
+### Anti-Pattern 4: New Tables Without Multi-Tenancy
 
-**Do this instead:** Store emails in a dedicated `email_messages` table linked to records by `record_id`. Add a `signal_events` row for each email. Query the `email_messages` table for thread views. The EAV model stores only derived metadata (engagement score, last_contacted_at).
+**What:** Creating a table without `workspace_id` column + foreign key to workspaces with `onDelete: "cascade"`.
+**Why bad:** Cannot scope data, breaks tenant isolation, orphans data on workspace deletion.
+**Instead:** Follow the pattern in every existing schema file.
 
-### Anti-Pattern 3: Shared OAuth Token for All Workspaces
+### Anti-Pattern 5: Adding External Job Queue Dependencies
 
-**What people do:** Use a single app-level Gmail OAuth credential to sync all workspaces.
+**What:** Introducing pg-boss, BullMQ, or Redis for job processing.
+**Why bad:** Adds operational complexity and a new dependency. The existing PostgreSQL table + cron polling handles CRM-scale workloads (thousands, not millions of jobs/day).
+**Instead:** Fix the existing `processJobs()` to actually call handlers. Add `FOR UPDATE SKIP LOCKED` for concurrency safety.
 
-**Why it's wrong:** Each rep has their own inbox. You need per-user (or per-workspace) OAuth tokens so that rep A's emails stay in rep A's workspace and rep B's stay in rep B's. App-level credentials can't differentiate senders.
+### Anti-Pattern 6: Duplicating the OpenRouter Call Infrastructure
 
-**Do this instead:** Per-user OAuth: each workspace member connects their own Gmail account. Store `oauth_connections` scoped to `(workspaceId, userId, provider)`. Email sync runs per-connection.
-
-### Anti-Pattern 4: Treating Proactive AI Outputs as Final
-
-**What people do:** Have the AI generate an email sequence and immediately send it, or generate a proposal and attach it to the deal without a human review step.
-
-**Why it's wrong:** AI hallucinations are real. Wrong pricing, wrong contact names, wrong competitor references. In sales, these errors are reputation-damaging. The architecture must have a human-in-the-loop gate for any customer-facing output.
-
-**Do this instead:** All AI-generated content goes into `ai_drafts` with `status: "draft"`. The agent surfaces it to the rep ("I drafted a follow-up — want me to send it?"). Only after explicit approval (`status: "approved"`) does it dispatch to `email_send` job.
-
-### Anti-Pattern 5: Rebuilding Chat Tool Infrastructure for Proactive Paths
-
-**What people do:** Create a completely separate LLM calling layer for background automation, duplicating the tool definitions and prompt building that already exist.
-
-**Why it's wrong:** The existing `ai-chat.ts` already has `callOpenRouter()`, `buildSystemPrompt()`, `getAIConfig()`, and tool infrastructure. Duplicating it creates drift.
-
-**Do this instead:** Extract a shared `callLLM(workspaceId, messages, tools?)` helper that both the interactive chat path and background generation path use. Document generators call `callLLM` without tools (pure generation). Interactive chat calls it with the full tool set.
+**What:** Creating a new LLM calling layer in generators separate from `ai-chat.ts`.
+**Why bad:** Two code paths to maintain. Config resolution, error handling, and model selection diverge.
+**Instead:** Extract a shared `callOpenRouter(workspaceId, messages, options)` helper from `ai-chat.ts`. Chat uses it with streaming + tools. Generators use it without streaming.
 
 ---
 
-## Integration Points
+## New Schema Requirements
 
-### External Services
+| Table | Purpose | When to Build |
+|-------|---------|---------------|
+| `comments` | @mentionable comments on records | Team Collab phase |
+| `saved_views` | Persisted filter/sort/column configs per user | Team Collab phase |
+| `webhook_subscriptions` | Outbound webhook URL + event registration | Webhooks phase |
+| `webhook_deliveries` | Delivery log with retry tracking | Webhooks phase |
 
-| Service | Integration Pattern | Auth | Key Constraints |
-|---------|---------------------|------|-----------------|
-| Gmail | Push notifications (watch API) + REST polling fallback | Per-user OAuth 2.0 (refresh token) | 7-day watch expiry, must re-register. 1B quota units/day per project. |
-| Microsoft Graph (Outlook) | Change notifications (subscriptions) + delta queries | Per-user OAuth 2.0 (MSAL) | Subscription expiry 3 days (must renew). Delta tokens for efficient sync. |
-| Google Calendar | Push notifications (watch) + Events list polling | Per-user OAuth 2.0 (same credential as Gmail if requested scope) | 7-day watch expiry. Same renewal pattern as Gmail. |
-| O365 Calendar | Graph API subscriptions + delta | Per-user OAuth 2.0 | Same as Outlook email — unified Microsoft credential. |
-| LinkedIn | Profile lookups via Sales Navigator API or People API | OAuth 2.0 (user-level) | API access gated — requires LinkedIn partnership or Sales Navigator license. This is the riskiest integration. |
-| Zoom | Recording webhooks + transcript download | App-level OAuth (webhook credential) | Webhooks deliver `recording.completed` events. Transcript requires `cloud_recording:read` scope. |
-| OpenRouter | HTTP POST for LLM inference | Per-workspace API key (existing) | Rate limits vary by model. Implement retry with exponential backoff. |
-| Resend | Transactional email (CRM-to-contact sends) | API key | Already optional dep for system email. Extend for outbound sales emails. |
-
-### Internal Boundaries
-
-| Boundary | Communication | Notes |
-|----------|---------------|-------|
-| Route handlers ↔ Job Queue | Direct DB insert (same PostgreSQL) | No message broker needed at this scale |
-| Job Queue ↔ Integration Adapters | Function call within worker | Worker calls adapter.syncMessages() per job |
-| Integration Adapters ↔ Signal Event Bus | Direct DB insert | Adapter inserts signal_events after normalizing |
-| Automation Engine ↔ Document Generators | Function call within worker | Engine calls documents/proposal.ts etc. |
-| Document Generators ↔ AI Chat service | Shared callLLM() helper | Not duplicated — extracted from ai-chat.ts |
-| Document Generators ↔ Agent Channels | postAgentMessage() (existing) | Aria posts draft notification to deals channel |
-| Approval Workflows ↔ Records | Record status attribute update | Approval state stored as EAV status attribute |
-| Activity Timeline ↔ Signal Events | SELECT query on signal_events | Timeline is a read view — no write coupling |
+**No new tables needed for:** Job Engine (exists), Signal Pipeline (exists), AI Generation (exists via `generated_assets`), Integration Sync (exists via `email_messages` + `calendar_events`), Analytics (reads only), Email Compose (uses `email_messages`), Activity Scoring (uses EAV `record_values`), Workflow Builder (uses `automation_rules`), Import/Export (uses `background_jobs` + `records`).
 
 ---
 
-## Suggested Build Order
+## Scalability Considerations
 
-This order respects dependency chains and delivers user value incrementally:
-
-**1. Background Job Infrastructure (enables everything else)**
-Jobs table, worker cron endpoint, retry logic. No features yet — but all async work depends on this foundation. Build first so every subsequent phase can use it.
-
-**2. Email Integration (highest signal value, most-used channel)**
-Gmail OAuth connect, webhook receive, inbox sync, auto-log to activity timeline, email-to-record matching. This delivers real value immediately (no more manual logging) and provides the signal source for proactive automation.
-
-**3. Signal Event Bus + Automation Engine (the "proactive" layer)**
-signal_events table, automation rule evaluation. Wire stage-change events through the engine. First automation: deal enters Proposal stage → enqueue proposal generation. This is the architectural inflection point from reactive to proactive.
-
-**4. AI Document Generators (the value delivery of proactive AI)**
-Proposal, opportunity brief, meeting prep brief, follow-up draft. Each is a document generator service + ai_drafts table + agent channel notification. Build on top of the automation engine.
-
-**5. Calendar Integration (meeting context for document generation)**
-Google Calendar sync, meeting auto-log to activity timeline. Enables meeting prep briefs (pre-meeting) and follow-up drafts (post-meeting transcript). Depends on document generators already existing.
-
-**6. Inbound Lead Capture (top of funnel)**
-Web forms, email-to-lead parsing. Creates records automatically, fires signal events. Depends on signal event bus.
-
-**7. Email Sequences (outbound automation)**
-Sequence CRUD, step scheduling, enrollment, send execution. Depends on email integration and job queue. Approval gate required before any send.
-
-**8. Telephony Integration (Zoom/call recording)**
-Webhook receive, transcript fetch, auto-summarization, call auto-log. Depends on document generators (call summary = a document type).
-
-**9. LinkedIn Integration (enrich + signal)**
-Profile lookup, connection status. Build last — LinkedIn API access is the most uncertain (requires partnership or Sales Navigator). Architecture supports it but shouldn't block other phases.
-
-**10. Analytics + Forecasting (requires data accumulation)**
-Win/loss analysis, rep coaching, pipeline forecast. These are read-only query layers over existing data. Build last because they require months of deal data to be meaningful.
+| Concern | At 100 users | At 10K users | At 100K users |
+|---------|--------------|--------------|---------------|
+| Job processing | Cron every 60s, batch 10 | Cron every 30s, batch 50 | Dedicated worker or pg-boss |
+| Signal events | Table grows indefinitely | Add retention (archive > 90 days) | Partition by month |
+| Email messages | Small per workspace | Index on receivedAt sufficient | Workspace partitioning |
+| AI generation | Sequential per job | Rate limit per workspace | Queue priority + concurrency |
+| Analytics queries | Compute on demand | Materialized views | Pre-compute daily aggregates |
+| Webhook delivery | Inline in job | Separate queue priority | Dedicated delivery service |
 
 ---
 
 ## Sources
 
-- Codebase direct examination: `services/ai-chat.ts`, `services/crm-events.ts`, `services/agent-channels.ts`, `db/schema/chat.ts`, `db/schema/records.ts`, `.planning/codebase/ARCHITECTURE.md`, `.planning/codebase/INTEGRATIONS.md` — HIGH confidence
-- Next.js route handler documentation (official, verified 2026-02-27): background task patterns via cron + route handlers — HIGH confidence
-- Vercel Cron Jobs documentation (official, current): scheduling pattern, HTTP GET trigger, `vercel.json` config — HIGH confidence
-- Gmail API push notification pattern (knowledge base, August 2025 cutoff): `users.watch()`, 7-day renewal, historyId cursor — MEDIUM confidence (verify current quota limits and watch expiry duration before implementation)
-- Microsoft Graph change notifications pattern (knowledge base): subscription expiry, delta queries for O365 — MEDIUM confidence (verify current subscription renewal requirements)
-- pg-boss PostgreSQL job queue pattern (knowledge base): job table schema, optimistic locking, retry — MEDIUM confidence (verify current API surface before adopting as dependency)
-- LinkedIn API access requirements (knowledge base): Sales Navigator dependency, partnership gating — LOW confidence (verify current API availability — LinkedIn frequently changes access policies)
-
----
-
-*Architecture research for: AI-driven CRM — proactive automation, signal processing, multi-channel integration*
-*Researched: 2026-03-10*
+- **Direct codebase analysis** (HIGH confidence): All 27 schema files, 44 services, `instrumentation.ts`, `middleware.ts`, API route structure, `lib/job-queue.ts`, `services/job-queue.ts`, `services/automation-engine.ts`, `services/signals.ts`, `services/crm-events.ts`, `services/generated-assets.ts`, `services/integrations/gmail.ts`, `services/ai-chat.ts`, `app/api/v1/cron/jobs/route.ts`
+- **Critical bug identified in code review**: `services/job-queue.ts` processJobs() lines 96-101 skip handler execution
+- **Signal-to-job gap identified**: `writeSignalEvent()` does not auto-enqueue evaluation job
+- **Dual enqueueJob implementation gap**: `lib/job-queue.ts` vs `services/job-queue.ts` have different signatures

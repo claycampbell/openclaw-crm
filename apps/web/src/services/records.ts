@@ -1,11 +1,14 @@
 import { db } from "@/db";
 import { records, recordValues, attributes, objects, statuses } from "@/db/schema";
-import { eq, and, inArray, desc, asc, sql, type SQL } from "drizzle-orm";
+import { dealParticipations } from "@/db/schema/deal-participations";
+import { eq, and, inArray, desc, asc, sql, or, gt, type SQL } from "drizzle-orm";
 import { ATTRIBUTE_TYPE_COLUMN_MAP, type AttributeType } from "@openclaw-crm/shared";
 import type { FilterGroup, SortConfig } from "@openclaw-crm/shared";
 import { extractPersonalName } from "@/lib/display-name";
 import { buildFilterSQL, buildSortExpressions } from "@/lib/query-builder";
 import { batchGetRecordDisplayNames } from "./display-names";
+import { encodeCursor, decodeCursor } from "@/lib/cursor-pagination";
+
 
 // ─── Types ───────────────────────────────────────────────────────────
 
@@ -347,6 +350,183 @@ export async function listRecords(
   };
 }
 
+export async function listRecordsCursor(
+  objectId: string,
+  options: {
+    limit?: number;
+    cursor?: string | null;
+    filter?: FilterGroup;
+    sorts?: SortConfig[];
+  } = {}
+) {
+  const { limit = 50, cursor, filter, sorts } = options;
+
+  const { byId, bySlug } = await loadAttributes(objectId);
+
+  // Build attribute map for query builder (keyed by slug)
+  const attrMap = new Map<string, { id: string; slug: string; type: AttributeType }>();
+  for (const [slug, info] of bySlug) {
+    attrMap.set(slug, info);
+  }
+
+  // Build filter SQL
+  const filterSQL = filter ? buildFilterSQL(filter, attrMap) : undefined;
+
+  // Build sort expressions
+  const sortExprs = sorts ? buildSortExpressions(sorts, attrMap) : [];
+
+  // Combined WHERE: objectId + optional filter + cursor condition
+  const conditions: SQL[] = [eq(records.objectId, objectId)];
+  if (filterSQL) conditions.push(filterSQL);
+
+  // If cursor provided, add composite cursor condition for stable pagination
+  if (cursor) {
+    const cursorData = decodeCursor(cursor);
+    if (cursorData) {
+      const cursorDate = new Date(cursorData.createdAt);
+      // (created_at > cursorDate) OR (created_at = cursorDate AND id > cursorId)
+      conditions.push(
+        or(
+          gt(records.createdAt, cursorDate),
+          and(eq(records.createdAt, cursorDate), gt(records.id, cursorData.id))!
+        )!
+      );
+    }
+  }
+
+  const whereClause = and(...conditions);
+
+  // Request limit + 1 to detect hasMore without a COUNT query
+  const fetchLimit = limit + 1;
+
+  const query = db
+    .select()
+    .from(records)
+    .where(whereClause)
+    .orderBy(
+      ...(sortExprs.length > 0
+        ? [...sortExprs, asc(records.createdAt), asc(records.id)]
+        : [asc(records.createdAt), asc(records.id)])
+    )
+    .limit(fetchLimit);
+
+  const recordRows = await query;
+
+  const hasMore = recordRows.length > limit;
+  if (hasMore) {
+    recordRows.pop(); // Remove the extra row used for hasMore detection
+  }
+
+  if (recordRows.length === 0) {
+    return { records: [] as FlatRecord[], nextCursor: null, hasMore: false };
+  }
+
+  const recordIds = recordRows.map((r) => r.id);
+  const valueRows = await db
+    .select()
+    .from(recordValues)
+    .where(inArray(recordValues.recordId, recordIds));
+
+  const hydrated = await hydrateRecords(recordRows, valueRows, byId);
+
+  // Encode cursor from the last returned row
+  const lastRow = recordRows[recordRows.length - 1];
+  const nextCursor = hasMore
+    ? encodeCursor({
+        createdAt: lastRow.createdAt.toISOString(),
+        id: lastRow.id,
+      })
+    : null;
+
+  return { records: hydrated, nextCursor, hasMore };
+}
+
+/**
+ * List records across multiple objects (same slug, different workspaces).
+ * Used for company-level roll-up views that aggregate BU records.
+ * Uses the first object's attributes as the canonical schema for hydration.
+ */
+export async function listRecordsMultiObject(
+  objectIds: string[],
+  options: { limit?: number; offset?: number; filter?: FilterGroup; sorts?: SortConfig[] } = {}
+) {
+  if (objectIds.length === 0) return { records: [], total: 0 };
+  if (objectIds.length === 1) return listRecords(objectIds[0], options);
+
+  const { limit = 50, offset = 0, filter, sorts } = options;
+
+  // Use the first object's attributes as canonical schema
+  const { byId, bySlug } = await loadAttributes(objectIds[0]);
+
+  const attrMap = new Map<string, { id: string; slug: string; type: AttributeType }>();
+  for (const [slug, info] of bySlug) {
+    attrMap.set(slug, info);
+  }
+
+  // For multi-object, we also need attribute mappings from other objects
+  // so we can hydrate values correctly (attributes have different IDs per workspace)
+  const allAttrMaps = new Map<string, Map<string, { id: string; slug: string; type: AttributeType }>>();
+  for (const objId of objectIds) {
+    const { bySlug: objBySlug } = await loadAttributes(objId);
+    const map = new Map<string, { id: string; slug: string; type: AttributeType }>();
+    for (const [slug, info] of objBySlug) {
+      map.set(slug, info);
+    }
+    allAttrMaps.set(objId, map);
+  }
+
+  // Build a unified byId map across all objects (for hydration)
+  const unifiedById = new Map<string, AttributeInfo & { slug: string }>();
+  for (const objId of objectIds) {
+    const { byId: objById } = await loadAttributes(objId);
+    for (const [id, info] of objById) {
+      unifiedById.set(id, info);
+    }
+  }
+
+  // Build filter using primary object's attribute mapping
+  const filterSQL = filter ? buildFilterSQL(filter, attrMap) : undefined;
+  const sortExprs = sorts ? buildSortExpressions(sorts, attrMap) : [];
+
+  // WHERE: records belong to any of the object IDs + optional filter
+  const baseWhere = inArray(records.objectId, objectIds);
+  const whereClause = filterSQL ? and(baseWhere, filterSQL) : baseWhere;
+
+  const query = db
+    .select()
+    .from(records)
+    .where(whereClause)
+    .orderBy(...(sortExprs.length > 0 ? sortExprs : [asc(records.sortOrder), desc(records.createdAt)]))
+    .limit(limit)
+    .offset(offset);
+
+  const recordRows = await query;
+
+  if (recordRows.length === 0) {
+    const [countResult] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(records)
+      .where(whereClause);
+    return { records: [], total: Number(countResult.count) };
+  }
+
+  const recordIds = recordRows.map((r) => r.id);
+  const valueRows = await db
+    .select()
+    .from(recordValues)
+    .where(inArray(recordValues.recordId, recordIds));
+
+  const [countResult] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(records)
+    .where(whereClause);
+
+  return {
+    records: await hydrateRecords(recordRows, valueRows, unifiedById),
+    total: Number(countResult.count),
+  };
+}
+
 export async function getRecord(objectId: string, recordId: string) {
   const { byId } = await loadAttributes(objectId);
 
@@ -364,6 +544,135 @@ export async function getRecord(objectId: string, recordId: string) {
     .where(eq(recordValues.recordId, recordId));
 
   return (await hydrateRecords(recordRows, valueRows, byId))[0];
+}
+
+/**
+ * Toggle the joint opportunity flag on a record.
+ */
+export async function flagAsJoint(recordId: string, isJoint: boolean) {
+  const [updated] = await db
+    .update(records)
+    .set({ isJoint, updatedAt: new Date() })
+    .where(eq(records.id, recordId))
+    .returning();
+  return updated ?? null;
+}
+
+/**
+ * List records flagged as joint opportunities for an object.
+ */
+export async function listJointRecords(
+  objectId: string,
+  options: { limit?: number; offset?: number } = {}
+) {
+  const { limit = 50, offset = 0 } = options;
+  const { byId } = await loadAttributes(objectId);
+
+  const whereClause = and(eq(records.objectId, objectId), eq(records.isJoint, true));
+
+  const recordRows = await db
+    .select()
+    .from(records)
+    .where(whereClause)
+    .orderBy(desc(records.createdAt))
+    .limit(limit)
+    .offset(offset);
+
+  if (recordRows.length === 0) {
+    const [countResult] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(records)
+      .where(whereClause);
+    return { records: [], total: Number(countResult.count) };
+  }
+
+  const recordIds = recordRows.map(r => r.id);
+  const valueRows = await db
+    .select()
+    .from(recordValues)
+    .where(inArray(recordValues.recordId, recordIds));
+
+  const [countResult] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(records)
+    .where(whereClause);
+
+  return {
+    records: await hydrateRecords(recordRows, valueRows, byId),
+    total: Number(countResult.count),
+  };
+}
+
+/**
+ * Get records where a specific workspace participates.
+ * Returns full flat records hydrated with values.
+ * Used to merge participated deals into a workspace's deal list.
+ */
+export async function getParticipatedRecords(
+  workspaceId: string,
+  objectSlug?: string,
+  options: { limit?: number } = {}
+) {
+  const { limit = 50 } = options;
+
+  // Get record IDs where this workspace participates
+  const participations = await db
+    .select({ recordId: dealParticipations.recordId })
+    .from(dealParticipations)
+    .where(eq(dealParticipations.workspaceId, workspaceId))
+    .limit(limit);
+
+  if (participations.length === 0) return [];
+
+  const recordIds = participations.map(p => p.recordId);
+
+  // Fetch the records with their values
+  let recordRows = await db
+    .select()
+    .from(records)
+    .where(inArray(records.id, recordIds))
+    .orderBy(desc(records.createdAt));
+
+  // Optionally filter by object slug
+  if (objectSlug && recordRows.length > 0) {
+    const objectIds = [...new Set(recordRows.map(r => r.objectId))];
+    const matchingObjects = await db
+      .select({ id: objects.id })
+      .from(objects)
+      .where(and(inArray(objects.id, objectIds), eq(objects.slug, objectSlug)));
+    const validObjectIds = new Set(matchingObjects.map(o => o.id));
+    recordRows = recordRows.filter(r => validObjectIds.has(r.objectId));
+  }
+
+  if (recordRows.length === 0) return [];
+
+  // Group records by objectId for attribute loading
+  const byObjectId = new Map<string, typeof recordRows>();
+  for (const r of recordRows) {
+    const arr = byObjectId.get(r.objectId) ?? [];
+    arr.push(r);
+    byObjectId.set(r.objectId, arr);
+  }
+
+  // Hydrate each group with its object's attributes
+  const allRecordIds = recordRows.map(r => r.id);
+  const allValues = await db
+    .select()
+    .from(recordValues)
+    .where(inArray(recordValues.recordId, allRecordIds));
+
+  // Build unified byId map across all objects
+  const unifiedById = new Map<string, AttributeInfo & { slug: string }>();
+  for (const objectId of byObjectId.keys()) {
+    const { byId } = await loadAttributes(objectId);
+    for (const [id, info] of byId) {
+      unifiedById.set(id, info);
+    }
+  }
+
+  const hydrated = await hydrateRecords(recordRows, allValues, unifiedById);
+  // Mark as participation records
+  return hydrated.map(r => ({ ...r, isParticipation: true }));
 }
 
 export async function createRecord(

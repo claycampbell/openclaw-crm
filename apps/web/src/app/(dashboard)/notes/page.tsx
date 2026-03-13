@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ChooseRecordDialog } from "@/components/records/choose-record-dialog";
+import { EmptyState } from "@/components/ui/empty-state";
 import { NoteEditorPanel } from "@/components/notes/note-editor-panel";
 import { isToday, isYesterday, isThisWeek, format } from "date-fns";
 
@@ -208,17 +209,27 @@ export default function NotesPage() {
 
         {/* Loading / Empty states */}
         {loading && notes.length === 0 && (
-          <p className="text-muted-foreground text-center py-12">Loading...</p>
+          <div className="space-y-3 py-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="rounded-lg border border-border/50 p-4 space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className="h-4 w-32 rounded bg-primary/10 animate-pulse" />
+                  <div className="h-3 w-16 ml-auto rounded bg-primary/10 animate-pulse" />
+                </div>
+                <div className="h-3 w-3/4 rounded bg-primary/10 animate-pulse" />
+              </div>
+            ))}
+          </div>
         )}
 
         {!loading && notes.length === 0 && (
-          <div className="text-center py-12">
-            <StickyNote className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
-            <p className="text-muted-foreground">No notes yet.</p>
-            <p className="text-sm text-muted-foreground/60 mt-1">
-              Click &quot;+ New note&quot; to create your first note.
-            </p>
-          </div>
+          <EmptyState
+            icon={StickyNote}
+            title="No notes yet"
+            description="Create your first note to capture details about your contacts and deals."
+            actionLabel="New note"
+            onAction={() => setChooseRecordOpen(true)}
+          />
         )}
 
         {/* Date-grouped notes */}

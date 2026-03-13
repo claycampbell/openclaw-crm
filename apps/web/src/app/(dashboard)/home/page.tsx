@@ -27,6 +27,7 @@ import {
   Sparkles,
   X,
 } from "lucide-react";
+import { EmptyState } from "@/components/ui/empty-state";
 
 interface Task {
   id: string;
@@ -266,9 +267,15 @@ export default function HomePage() {
     }
   }
 
+  // Auto-detect completed onboarding steps based on data
+  const completedStepIds = new Set<string>();
+  if (stats.people > 0) completedStepIds.add("add-contact");
+  if (stats.deals > 0) completedStepIds.add("track-deal");
+
   // Onboarding steps that haven't been dismissed
   const visibleSteps = ONBOARDING_STEPS.filter((s) => !dismissedSteps.includes(s.id));
-  const showOnboarding = isNewUser && !onboardingDismissed && visibleSteps.length > 0;
+  const allCompleted = visibleSteps.every((s) => completedStepIds.has(s.id));
+  const showOnboarding = !onboardingDismissed && visibleSteps.length > 0 && !allCompleted;
 
   return (
     <div className="p-6 max-w-5xl space-y-8">
@@ -303,31 +310,49 @@ export default function HomePage() {
             </button>
           </div>
           <div className="grid gap-1 p-2 sm:grid-cols-2">
-            {visibleSteps.map((step) => (
-              <div
-                key={step.id}
-                className="group relative flex items-start gap-3 rounded-lg p-3 hover:bg-muted/50 transition-colors"
-              >
-                <div className={cn("mt-0.5 shrink-0", step.color)}>
-                  <step.icon className="h-5 w-5" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <Link href={step.href} className="text-sm font-medium hover:underline">
-                    {step.title}
-                  </Link>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {step.description}
-                  </p>
-                </div>
-                <button
-                  onClick={(e) => { e.stopPropagation(); dismissStep(step.id); }}
-                  className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground mt-0.5"
-                  title="Dismiss"
+            {visibleSteps.map((step) => {
+              const isCompleted = completedStepIds.has(step.id);
+              return (
+                <div
+                  key={step.id}
+                  className={cn(
+                    "group relative flex items-start gap-3 rounded-lg p-3 hover:bg-muted/50 transition-colors",
+                    isCompleted && "opacity-60"
+                  )}
                 >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            ))}
+                  <div className={cn("mt-0.5 shrink-0", isCompleted ? "text-emerald-500" : step.color)}>
+                    {isCompleted ? (
+                      <Check className="h-5 w-5" />
+                    ) : (
+                      <step.icon className="h-5 w-5" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <Link
+                      href={step.href}
+                      className={cn(
+                        "text-sm font-medium hover:underline",
+                        isCompleted && "line-through"
+                      )}
+                    >
+                      {step.title}
+                    </Link>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {isCompleted ? "Done!" : step.description}
+                    </p>
+                  </div>
+                  {!isCompleted && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); dismissStep(step.id); }}
+                      className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground mt-0.5"
+                      title="Dismiss"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </Card>
       )}
@@ -476,27 +501,22 @@ export default function HomePage() {
 
           <div className="divide-y divide-border/50">
             {loading && tasks.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-                <CheckSquare className="h-8 w-8 mb-2 opacity-30" />
-                <p className="text-xs">Loading tasks...</p>
+              <div className="space-y-2 p-4">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-3 py-1">
+                    <div className="h-4 w-4 rounded-full bg-primary/10 animate-pulse" />
+                    <div className="h-3 flex-1 max-w-[180px] rounded bg-primary/10 animate-pulse" />
+                  </div>
+                ))}
               </div>
             )}
             {!loading && tasks.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-                <CheckSquare className="h-8 w-8 mb-2 opacity-30" />
-                <p className="text-xs">No tasks yet</p>
-                <p className="text-xs mt-1">
-                  Create one from any{" "}
-                  <Link href="/objects/people" className="text-primary hover:underline">
-                    contact
-                  </Link>
-                  {" "}or{" "}
-                  <Link href="/objects/deals" className="text-primary hover:underline">
-                    deal
-                  </Link>
-                  {" "}page
-                </p>
-              </div>
+              <EmptyState
+                icon={CheckSquare}
+                title="No tasks yet"
+                description="Create one from any contact or deal page."
+                compact
+              />
             )}
             {tasks.map((task) => {
               const isOverdue =
@@ -583,23 +603,22 @@ export default function HomePage() {
 
           <div className="divide-y divide-border/50">
             {loading && notes.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-                <StickyNote className="h-8 w-8 mb-2 opacity-30" />
-                <p className="text-xs">Loading notes...</p>
+              <div className="space-y-2 p-4">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="space-y-1.5 py-1">
+                    <div className="h-3 w-28 rounded bg-primary/10 animate-pulse" />
+                    <div className="h-3 w-3/4 rounded bg-primary/10 animate-pulse" />
+                  </div>
+                ))}
               </div>
             )}
             {!loading && notes.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-                <StickyNote className="h-8 w-8 mb-2 opacity-30" />
-                <p className="text-xs">No notes yet</p>
-                <p className="text-xs mt-1">
-                  Open a{" "}
-                  <Link href="/objects/people" className="text-primary hover:underline">
-                    contact
-                  </Link>
-                  {" "}to write your first note
-                </p>
-              </div>
+              <EmptyState
+                icon={StickyNote}
+                title="No notes yet"
+                description="Open a contact to write your first note."
+                compact
+              />
             )}
             {notes.map((note) => (
               <Link

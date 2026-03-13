@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
-import { workspaceMembers } from "@/db/schema";
+import { workspaceMembers, workspaces } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { badRequest } from "@/lib/api-utils";
 
@@ -46,7 +46,25 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const response = NextResponse.json({ data: { workspaceId } });
+  // Fetch workspace details for richer response
+  const [ws] = await db
+    .select({
+      type: workspaces.type,
+      name: workspaces.name,
+      parentWorkspaceId: workspaces.parentWorkspaceId,
+    })
+    .from(workspaces)
+    .where(eq(workspaces.id, workspaceId))
+    .limit(1);
+
+  const response = NextResponse.json({
+    data: {
+      workspaceId,
+      workspaceName: ws?.name,
+      workspaceType: ws?.type ?? "company",
+      parentWorkspaceId: ws?.parentWorkspaceId ?? null,
+    },
+  });
   response.cookies.set("active-workspace-id", workspaceId, {
     path: "/",
     httpOnly: false,

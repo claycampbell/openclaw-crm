@@ -46,12 +46,33 @@ OpenClaw CRM plugs directly into your [OpenClaw Bot](https://openclaw-crm.402box
 - **Notes**: rich text editor with auto-save, linked to any record
 - **Tasks**: deadlines, assignees, record linking, completion tracking
 - **Search**: full-text search across all records with `Ctrl+K` command palette
-- **CSV Import/Export**: bulk import with column mapping and type coercion
+- **CSV Import/Export**: bulk import with column mapping and type coercion; export flattens EAV to columns
 - **Filtering & Sorting**: compound filters (AND/OR) with attribute-type-aware operators
 - **Custom Objects**: create your own object types beyond People, Companies, and Deals
 - **Notifications**: in-app notification system
+- **Form Validation**: dynamic EAV-to-Zod schema generation with inline field-level errors
 - **Dark & Light Mode**: theme support throughout
-- **Responsive**: mobile-friendly with collapsible sidebar
+- **Responsive**: mobile-friendly with collapsible sidebar (click-to-toggle, persisted in localStorage)
+
+### Sales Intelligence
+
+- **Dashboard**: Pipeline view with rep/manager/leadership perspectives, plus integrated analytics (Win/Loss, Rep Coaching, Forecast) in tabs
+- **Hot Leads**: Activity-scored contacts ranked by engagement — composite score formula: `(notes×3 + tasks×2 + completedTasks×1) × exp(-age/30days)`
+- **Battlecards**: Competitive intelligence cards auto-generated from deal data
+- **Sequences**: Email outreach sequences with enrollment and step management
+- **Close**: Combined contracts (SOW, NDA, MSA generation with templates and approval routing) and handoff briefs (auto-generated when deals close)
+
+### Reviews (Inbox)
+
+- **AI Drafts**: AI-generated documents (briefs, proposals, follow-ups, meeting prep, battlecards) awaiting review before customer-facing action
+- **Approvals**: Approval requests triggered by deal events with configurable rules, approve/reject with notes
+
+### Automation & Webhooks
+
+- **Automation Rules**: 6 trigger types × 6 action types with conditional form fields; engine evaluates both user-defined and built-in rules
+- **Outbound Webhooks**: HMAC-SHA256 signed delivery to external URLs, auto-disable after 10 failures, test ping with one-click
+- **CRM Events**: `record.created`, `record.updated`, `record.deleted`, `deal.stage_changed` dispatched to subscribed webhooks
+- **Background Jobs**: Concurrent-safe queue with `FOR UPDATE SKIP LOCKED`, retry, and dead-letter
 
 ### Built-in AI Chat Agent
 
@@ -63,6 +84,7 @@ Talk to your CRM data in plain English. Powered by [OpenRouter](https://openrout
 - Multi-round tool calling (up to 10 rounds per message)
 - Dynamic system prompt built from your workspace schema
 - Configurable model selection per workspace
+- AI asset generation pipeline: deal events trigger auto-generation of opportunity briefs, proposals, meeting prep, follow-ups, and battlecards
 
 ## Tech Stack
 
@@ -195,32 +217,25 @@ openclaw-crm/
 
 ## API
 
-REST API at `/api/v1/` with Bearer token authentication.
+REST API at `/api/v1/` with Bearer token authentication. 100+ endpoints across all features.
 
-| Endpoint | Methods | Description |
-|----------|---------|-------------|
-| `/api/v1/objects` | GET, POST | List/create objects |
-| `/api/v1/objects/:slug` | GET, PATCH, DELETE | Object CRUD |
-| `/api/v1/objects/:slug/attributes` | GET, POST | Manage attributes |
-| `/api/v1/objects/:slug/records` | GET, POST | List/create records |
-| `/api/v1/objects/:slug/records/query` | POST | Filter/sort records |
-| `/api/v1/objects/:slug/records/:id` | GET, PATCH, DELETE | Record CRUD |
-| `/api/v1/objects/:slug/records/import` | POST | Bulk CSV import |
-| `/api/v1/lists` | GET, POST | List/create lists |
-| `/api/v1/lists/:id` | GET, PATCH, DELETE | List CRUD |
-| `/api/v1/lists/:id/entries` | GET, POST | List entries |
-| `/api/v1/notes` | GET, POST | Notes |
-| `/api/v1/tasks` | GET, POST | Tasks |
-| `/api/v1/search` | GET | Full-text search |
-| `/api/v1/workspace` | GET, PATCH | Workspace settings |
-| `/api/v1/workspace-members` | GET, POST | Member management |
-| `/api/v1/notifications` | GET | Notifications |
-| `/api/v1/api-keys` | GET, POST | API key management |
-| `/api/v1/chat/completions` | POST | AI chat (SSE stream) |
-| `/api/v1/chat/conversations` | GET, POST | Chat conversations |
-| `/api/v1/chat/tool-confirm` | POST | Approve/reject AI writes |
+| Category | Key Endpoints |
+|----------|--------------|
+| **Objects & Records** | `objects`, `objects/:slug/records`, `records/query`, `records/import`, `search` |
+| **Tasks & Notes** | `tasks`, `notes` |
+| **Lists** | `lists`, `lists/:id/entries` |
+| **AI Chat** | `chat/completions` (SSE stream), `chat/conversations`, `chat/tool-confirm` |
+| **Reviews** | `assets` (AI drafts), `approvals/requests`, `approvals/rules` |
+| **Dashboard** | `dashboard` (?view=rep\|manager\|leadership), `activity-scores` |
+| **Analytics** | `analytics/win-loss`, `analytics/rep-coaching`, `analytics/forecast` |
+| **Sales** | `sequences`, `battlecards`, `contracts`, `close-flow/handoff` |
+| **Automations** | `automations` (CRUD rules) |
+| **Webhooks** | `webhooks` (CRUD + test ping with HMAC-SHA256) |
+| **Workspace** | `workspace`, `workspace-members`, `workspaces/switch`, `api-keys` |
+| **Integrations** | `integrations/gmail/*`, `integrations/outlook/*`, `integrations/zoom/*` |
+| **Notifications** | `notifications`, `notifications/mark-all-read` |
 
-Full API documentation at [`/llms-api.txt`](https://openclaw-crm.402box.io/llms-api.txt) and [`/openapi.json`](https://openclaw-crm.402box.io/openapi.json).
+Full API documentation at [`/llms-api.txt`](https://openclaw-crm.402box.io/llms-api.txt) and [`/openapi.json`](https://openclaw-crm.402box.io/openapi.json). See `CLAUDE.md` for complete endpoint reference with HTTP methods.
 
 ## Database Schema
 

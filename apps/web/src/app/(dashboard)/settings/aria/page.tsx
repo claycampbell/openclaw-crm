@@ -302,6 +302,153 @@ POST /api/v1/notifications/mark-all-read
 \`\`\`
 Mark all notifications as read.
 
+### Dashboard & Analytics
+
+\`\`\`
+GET /api/v1/dashboard?view=rep|manager|leadership
+\`\`\`
+Get pipeline dashboard data. Views: rep (personal), manager (team), leadership (executive).
+
+\`\`\`
+GET /api/v1/activity-scores?limit=20
+\`\`\`
+Get activity-scored records ranked by engagement (hot leads).
+
+\`\`\`
+GET /api/v1/analytics/win-loss
+\`\`\`
+Win/loss pattern analysis (requires 30+ closed deals).
+
+\`\`\`
+GET /api/v1/analytics/rep-coaching
+\`\`\`
+Rep performance coaching metrics.
+
+\`\`\`
+GET /api/v1/analytics/forecast
+\`\`\`
+Pipeline forecast and revenue projections.
+
+### Automations
+
+\`\`\`
+GET /api/v1/automations
+\`\`\`
+List all automation rules.
+
+\`\`\`
+POST /api/v1/automations
+Content-Type: application/json
+{ "name": "Auto-assign", "triggerType": "record.created", "triggerConfig": { "objectSlug": "deals" }, "actionType": "update_field", "actionConfig": { "field": "owner", "value": "user-id" }, "enabled": true }
+\`\`\`
+Create an automation rule. Trigger types: record.created, record.updated, field.changed, deal.stage_changed, deal.closed_won, deal.closed_lost. Action types: update_field, create_task, send_notification, create_note, enqueue_job, webhook.
+
+\`\`\`
+PATCH /api/v1/automations/:id
+Content-Type: application/json
+{ "enabled": false }
+\`\`\`
+Update an automation rule.
+
+\`\`\`
+DELETE /api/v1/automations/:id
+\`\`\`
+Delete an automation rule.
+
+### Webhooks
+
+\`\`\`
+GET /api/v1/webhooks
+\`\`\`
+List outbound webhooks.
+
+\`\`\`
+POST /api/v1/webhooks
+Content-Type: application/json
+{ "name": "Slack", "url": "https://hooks.slack.com/...", "events": ["record.created", "deal.stage_changed"], "secret": "optional-hmac-secret" }
+\`\`\`
+Create an outbound webhook. Events: record.created, record.updated, record.deleted, deal.stage_changed. Secret enables HMAC-SHA256 signing.
+
+\`\`\`
+PATCH /api/v1/webhooks/:id
+Content-Type: application/json
+{ "enabled": false }
+\`\`\`
+Update a webhook.
+
+\`\`\`
+POST /api/v1/webhooks/:id/test
+\`\`\`
+Send a test ping to the webhook URL.
+
+\`\`\`
+DELETE /api/v1/webhooks/:id
+\`\`\`
+Delete a webhook.
+
+### Approvals
+
+\`\`\`
+GET /api/v1/approvals/requests?status=pending
+\`\`\`
+List approval requests. Filter by status: pending, approved, rejected, expired.
+
+\`\`\`
+POST /api/v1/approvals/requests/:requestId/approve
+Content-Type: application/json
+{ "note": "Looks good" }
+\`\`\`
+Approve a request.
+
+\`\`\`
+POST /api/v1/approvals/requests/:requestId/reject
+Content-Type: application/json
+{ "note": "Needs revision" }
+\`\`\`
+Reject a request.
+
+### Contracts
+
+\`\`\`
+GET /api/v1/contracts
+\`\`\`
+List contracts.
+
+\`\`\`
+POST /api/v1/contracts
+Content-Type: application/json
+{ "title": "SOW for Acme", "contractType": "sow", "routeToApproval": true }
+\`\`\`
+Generate a contract. Types: sow, nda, msa, proposal, order_form, custom.
+
+\`\`\`
+PATCH /api/v1/contracts/:contractId
+Content-Type: application/json
+{ "status": "sent" }
+\`\`\`
+Update contract status.
+
+### Sequences
+
+\`\`\`
+GET /api/v1/sequences
+\`\`\`
+List email sequences.
+
+\`\`\`
+POST /api/v1/sequences
+Content-Type: application/json
+{ "name": "Outreach v1", "description": "Initial outreach" }
+\`\`\`
+Create a sequence.
+
+\`\`\`
+POST /api/v1/sequences/:id/enrollments
+Content-Type: application/json
+{ "recordIds": ["uuid1", "uuid2"] }
+\`\`\`
+Enroll contacts in a sequence.
+
 ## Value Formats by Attribute Type
 
 When creating or updating records, use these value formats:

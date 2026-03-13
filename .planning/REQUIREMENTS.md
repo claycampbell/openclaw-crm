@@ -1,222 +1,190 @@
-# Requirements: OpenClaw CRM
+# Requirements: OpenClaw CRM v2.0
 
-**Defined:** 2026-03-10
+**Defined:** 2026-03-11
 **Core Value:** The CRM does the work. Reps sell, AI handles everything else.
 
-## v1 Requirements
+## v2.0 Requirements
 
-Requirements for initial release. Each maps to roadmap phases.
+Requirements for v2.0 milestone. Each maps to roadmap phases.
 
 ### Infrastructure
 
-- [ ] **INFR-01**: System can process background jobs asynchronously with retry, backoff, and dead-letter handling (pg-boss)
-- [ ] **INFR-02**: System writes signal events transactionally when CRM state changes (stage advances, record creates, note adds)
-- [ ] **INFR-03**: System evaluates workspace-scoped automation rules when signal events arrive and dispatches appropriate jobs
-- [ ] **INFR-04**: System stores all AI-generated content in a dedicated generated_assets table with draft/approved/sent/archived lifecycle
-- [ ] **INFR-05**: Rep can review AI-generated drafts in an approval inbox and approve, edit, or reject before any customer-facing action
-- [ ] **INFR-06**: System deduplicates external webhook signals using a processed_signals table with unique constraint on (provider, signal_id)
-- [ ] **INFR-07**: System stores OAuth tokens in a dedicated encrypted integration_tokens table with proactive refresh before expiry
-
-### Email Integration
-
-- [ ] **EMAL-01**: User can connect their Gmail account via OAuth and grant bi-directional sync permission
-- [ ] **EMAL-02**: User can connect their Outlook/O365 account via OAuth and grant bi-directional sync permission
-- [ ] **EMAL-03**: System automatically syncs inbound and outbound emails and logs them to matching deal/contact records
-- [ ] **EMAL-04**: System tracks email opens and link clicks on outbound emails sent through the CRM
-- [ ] **EMAL-05**: User can view email thread history on any contact or deal record
-- [ ] **EMAL-06**: User can send emails to contacts directly from the CRM via their connected account
-
-### Calendar Integration
-
-- [ ] **CALR-01**: User can connect their Google Calendar via OAuth (shared credential with Gmail)
-- [ ] **CALR-02**: User can connect their Outlook Calendar via OAuth (shared credential with O365)
-- [ ] **CALR-03**: System automatically logs meetings to associated deal records by matching attendee emails
-- [ ] **CALR-04**: System triggers meeting prep brief generation 30 minutes before a deal-linked calendar event
-- [ ] **CALR-05**: System triggers post-meeting follow-up draft generation when a deal-linked meeting ends
-
-### LinkedIn Integration
-
-- [ ] **LNKD-01**: System enriches contact records with LinkedIn profile data (title, company, location) via Proxycurl
-- [ ] **LNKD-02**: System enriches company records with LinkedIn company data (size, industry, description) via Proxycurl
-- [ ] **LNKD-03**: User can trigger manual enrichment on any contact or company record
-- [ ] **LNKD-04**: System auto-enriches new contacts on creation when email is provided
-
-### Telephony Integration
-
-- [ ] **TELE-01**: System receives Zoom call recording webhooks and stores recording metadata linked to deal records
-- [ ] **TELE-02**: System transcribes call recordings via AssemblyAI with speaker diarization
-- [ ] **TELE-03**: System generates AI summaries of call transcripts with key topics, action items, and next steps
-- [ ] **TELE-04**: System auto-logs call events to the activity timeline on associated deal records
-- [ ] **TELE-05**: System applies PII redaction to transcripts before AI processing
-- [ ] **TELE-06**: Workspace admin can enable/disable call recording consent requirements
+- [ ] **INFR-01**: Job execution loop calls registered handlers with FOR UPDATE SKIP LOCKED to prevent double-execution
+- [ ] **INFR-02**: Signal events auto-enqueue evaluation jobs so automation rules are checked on every CRM state change
+- [ ] **INFR-03**: enqueueJob signature is consistent across lib/job-queue.ts and services/job-queue.ts
+- [ ] **INFR-04**: Failed jobs retry with exponential backoff (3 attempts) and land in dead-letter state after exhaustion
 
 ### AI Asset Generation
 
-- [ ] **AGEN-01**: System auto-generates an opportunity brief when a new deal is created with sufficient context
-- [ ] **AGEN-02**: System auto-generates a proposal draft when a deal advances to the proposal stage
-- [ ] **AGEN-03**: System auto-generates a presentation deck draft when a deal advances to the presentation stage
-- [ ] **AGEN-04**: System generates meeting prep briefs with prospect research, recent touchpoints, talking points, and objection handling
-- [ ] **AGEN-05**: System generates post-meeting follow-up email drafts from call notes or transcripts
-- [ ] **AGEN-06**: System generates competitive battlecards when a competitor is detected in deal emails, notes, or call transcripts
-- [ ] **AGEN-07**: All generated assets land as drafts requiring explicit rep approval before any customer-facing action
-- [ ] **AGEN-08**: System uses tiered AI context strategy (rule-based / light model / full model) to manage cost and context limits
+- [ ] **AIGN-01**: When a deal is created with sufficient context, an opportunity brief draft appears in the approval inbox
+- [ ] **AIGN-02**: When a deal advances to proposal stage, a proposal draft is auto-generated
+- [ ] **AIGN-03**: 30 minutes before a deal-linked meeting, a meeting prep brief with talking points appears in the inbox
+- [ ] **AIGN-04**: After a deal-linked meeting ends, a follow-up email draft is auto-generated
+- [ ] **AIGN-05**: When competitor mentions are detected in emails/notes, a battlecard is auto-generated or updated
+- [ ] **AIGN-06**: Per-workspace daily budget tracking prevents AI generation cost blowout
+- [ ] **AIGN-07**: 15-minute deduplication window prevents duplicate generation for the same record and asset type
 
-### Email Sequences
+### Integration Sync
 
-- [ ] **SEQN-01**: User can create multi-step email sequence templates with AI-generated personalized content
-- [ ] **SEQN-02**: User can enroll contacts into sequences with scheduled step execution
-- [ ] **SEQN-03**: System automatically stops a sequence when a recipient replies
-- [ ] **SEQN-04**: System supports A/B variant testing across sequence steps
-- [ ] **SEQN-05**: User can view sequence performance metrics (open rate, reply rate, conversion)
+- [ ] **SYNC-01**: Gmail delta sync processes new emails incrementally using historyId with bounded partial-sync recovery
+- [ ] **SYNC-02**: Outlook delta sync processes new emails using deltaToken with proactive token refresh every 3-4 days
+- [ ] **SYNC-03**: Calendar sync detects meeting_ended events and logs them to deal activity timeline
+- [ ] **SYNC-04**: Synced emails are auto-matched to records by email address and logged to activity timeline
+- [ ] **SYNC-05**: Outlook webhook subscriptions are proactively renewed before 3-day expiry
 
-### Lead Management
+### Analytics
 
-- [ ] **LEAD-01**: System scores leads based on attribute fit and engagement signals with a numeric score
-- [ ] **LEAD-02**: System provides plain-language AI explanation for each lead score ("Title matches ICP, 3 pricing page visits")
-- [ ] **LEAD-03**: User can capture inbound leads via embeddable web forms that create records automatically
-- [ ] **LEAD-04**: System can parse inbound emails to create lead records from unknown senders
+- [ ] **ANLT-01**: Win/loss analysis surfaces specific patterns from closed deals with AI narrative after 30+ closed deals
+- [ ] **ANLT-02**: Rep coaching compares per-rep activity metrics to team averages and top performer benchmarks
+- [ ] **ANLT-03**: Pipeline forecast shows weighted value by stage using historical close rates
+- [ ] **ANLT-04**: Each active deal shows a next-best-action suggestion based on stage and recent activity
 
-### Activity Timeline
+### UX Polish
 
-- [ ] **TMLN-01**: User can view a unified chronological timeline on any record showing all touchpoints (emails, calls, meetings, notes, tasks, stage changes)
-- [ ] **TMLN-02**: Timeline entries are auto-logged from connected integrations without manual entry
-- [ ] **TMLN-03**: AI can read the activity timeline to assemble context for asset generation
+- [ ] **UXPL-01**: Toast notifications show success/error/loading feedback on every mutation via Sonner
+- [ ] **UXPL-02**: Error boundaries catch and display client component failures gracefully
+- [ ] **UXPL-03**: All destructive actions use shadcn AlertDialog instead of browser confirm()
+- [ ] **UXPL-04**: Create/edit forms show inline validation errors via react-hook-form + Zod
+- [ ] **UXPL-05**: Record tables use cursor-based pagination instead of hardcoded limit=200
+- [ ] **UXPL-06**: Virtual scrolling supports large record sets without DOM performance issues
 
-### Dashboards
+### Email Compose
 
-- [ ] **DASH-01**: Rep can view a personal pipeline dashboard showing their deals, tasks, and AI-generated draft queue
-- [ ] **DASH-02**: Manager can view a team pipeline dashboard with aggregate deal metrics and per-rep performance
-- [ ] **DASH-03**: Leadership can view a revenue forecast dashboard with stage distribution and weighted pipeline value
+- [ ] **ECOM-01**: User can compose and send email from record detail page via connected Gmail/Outlook OAuth
+- [ ] **ECOM-02**: Email compose uses TipTap editor with template picker, CC/BCC, and auto-populated To field
+- [ ] **ECOM-03**: Sent emails are stored in email_messages with open pixel and click tracking
+- [ ] **ECOM-04**: User can view email thread history on record detail page grouped by thread_id
+- [ ] **ECOM-05**: Email thread bodies lazy-load from provider API on expand to avoid storing large HTML
 
-### Approval Workflows
+### Activity Scoring
 
-- [ ] **APRV-01**: Workspace admin can configure approval rules (e.g., discount > 20% routes to manager, contract > $100k routes to legal)
-- [ ] **APRV-02**: System routes deals matching approval rules to the designated approver with notification
-- [ ] **APRV-03**: Approver can approve, reject, or request changes on routed items
-- [ ] **APRV-04**: System tracks approval history with timestamps and approver identity
+- [ ] **SCOR-01**: Each contact/company has a composite activity score (fit 40% + engagement 40% + recency 20%)
+- [ ] **SCOR-02**: Scores recalculate as a background job when relevant signals arrive (email opens, meetings, stage changes)
+- [ ] **SCOR-03**: Hot leads dashboard widget shows top 20 records by score with 7-day trend indicators
+- [ ] **SCOR-04**: Score includes 25% monthly decay without new engagement activity
 
-### Contract Generation
+### Workflow Automation
 
-- [ ] **CNTR-01**: System generates contract/SOW documents from deal data (pricing, terms, stakeholders, company info)
-- [ ] **CNTR-02**: Generated contracts are output as PDF via server-side rendering
-- [ ] **CNTR-03**: Contracts route through approval workflow before delivery to customer
-- [ ] **CNTR-04**: User can customize contract templates per workspace with clause library
+- [ ] **WKFL-01**: User can create automation rules via form-based trigger-condition-action UI
+- [ ] **WKFL-02**: Triggers map to signal types (stage_changed, record_created, email_received, meeting_ended, note_added)
+- [ ] **WKFL-03**: Conditions support field/operator/value rows with AND logic matching existing automation_rules schema
+- [ ] **WKFL-04**: Actions include: enqueue AI generate, send email, create task, create note
+- [ ] **WKFL-05**: Rules list shows enable/disable toggles and last-triggered timestamp
 
-### Close Flow
+### Team Collaboration
 
-- [ ] **CLOS-01**: When a deal is marked closed-won, system generates a customer handoff brief with stakeholders, agreed terms, success criteria, and deal history
-- [ ] **CLOS-02**: Handoff brief can be exported or sent to external CS tools via webhook
+- [ ] **COLB-01**: User can @mention workspace members in notes with autocomplete via TipTap mention extension
+- [ ] **COLB-02**: @mentions create notifications for mentioned users
+- [ ] **COLB-03**: User can add threaded comments on records (lighter than notes, separate from rich text notes)
+- [ ] **COLB-04**: User can save filter configurations as private or team-shared views on object pages
+- [ ] **COLB-05**: Saved views appear as a dropdown/sidebar for quick-apply on record tables
 
-### Analytics & Intelligence
+### Import/Export
 
-- [ ] **INTL-01**: System analyzes closed deals to identify win/loss patterns (e.g., "Deals with 3+ stakeholders and a POC close 2x more")
-- [ ] **INTL-02**: System compares rep activity patterns to top performers and generates coaching recommendations
-- [ ] **INTL-03**: System generates pipeline forecasts with AI confidence scores based on engagement signals and historical close rates
-- [ ] **INTL-04**: AI provides "next best action" suggestions on each deal based on stage, activity, and win pattern data
+- [ ] **IMEX-01**: User can import CSV with multi-step wizard (upload, auto-map fields, manual correct, preview, execute)
+- [ ] **IMEX-02**: Import auto-maps CSV headers to attributes by fuzzy name match
+- [ ] **IMEX-03**: Import supports duplicate detection with configurable strategy (skip, update, create all)
+- [ ] **IMEX-04**: Large imports run as background jobs with progress tracking
+- [ ] **IMEX-05**: User can export filtered record views to CSV with EAV-to-columnar flattening
 
-## v2 Requirements
+### Outbound Webhooks
 
-Deferred to future release. Tracked but not in current roadmap.
+- [ ] **HOOK-01**: User can create webhook subscriptions with URL, event types, and optional HMAC secret
+- [ ] **HOOK-02**: CRM events (record.created, record.updated, deal.stage_changed, deal.closed, email.received) trigger webhook delivery
+- [ ] **HOOK-03**: Webhook delivery runs async via job queue with 3x retry and exponential backoff
+- [ ] **HOOK-04**: Each delivery attempt is logged with HTTP status for debugging
+- [ ] **HOOK-05**: Circuit breaker disables webhook after 5 consecutive failures
 
-### Advanced Integrations
+## v3.0 Requirements (Deferred)
 
-- **ADV-01**: Native Slack integration for deal notifications and AI draft review
-- **ADV-02**: Zapier/webhook integration for connecting to external tools
-- **ADV-03**: Native e-signature integration (DocuSign/HelloSign) for contracts
-
-### Mobile
-
-- **MOB-01**: Progressive web app with offline-capable deal lookup
-- **MOB-02**: Push notifications for urgent deal signals on mobile
+- **WKFL-V3-01**: Node-graph visual workflow editor (n8n/Zapier style)
+- **DEDUP-01**: Automatic duplicate detection on every record save
+- **EDIT-01**: Inline spreadsheet-style table editing
+- **RTME-01**: Real-time WebSocket notifications
+- **MKTG-01**: Email marketing campaigns and A/B testing
+- **LEAD-01**: Lead scoring from AI-inferred ICP (vs manual config)
 
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| Full marketing automation (campaigns, nurture flows, newsletters) | Different product, different persona — sales sequences yes, marketing broadcasts no |
-| Custom SQL report builder | AI-generated summaries replace 90% of use cases; exponential surface area for 5% of users |
-| Native iOS/Android apps | Responsive PWA covers the gap; native mobile is v3 |
-| Real-time collaborative proposal editing | Async draft/review workflow is the correct model for sales assets |
-| Prospecting database (Apollo-style lead sourcing) | Multi-million dollar data infrastructure problem; integrate with existing providers instead |
-| White-label / multi-brand reseller mode | Single-brand product per PROJECT.md |
-| Built-in customer support ticketing | Different workflow and persona; CS handoff brief feeds into Zendesk/Intercom via webhook |
-| LinkedIn scraping | ToS violation, liability risk; use compliant Proxycurl API instead |
+| Node-graph workflow editor | Form-based builder covers 90% of CRM automations; 10x effort for marginal gain |
+| Duplicate detection on every save | Expensive with EAV; import-only dedup first |
+| Inline spreadsheet editing | High bug surface with 17 attribute types; record detail editing sufficient |
+| Real-time WebSocket push | Polling adequate for CRM; adds infrastructure complexity |
+| Email marketing campaigns | Different product/data model; sales sequences cover 1:1 outreach |
+| Real-time collaborative editing | CRDT/OT complexity; CRM notes are single-author 99% of the time |
+| Mobile native apps | Web-first, responsive design sufficient |
+| Custom report builder | Role-based dashboards cover reporting needs |
 
 ## Traceability
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INFR-01 | Phase 1 | Pending |
-| INFR-02 | Phase 1 | Pending |
-| INFR-03 | Phase 1 | Pending |
-| INFR-04 | Phase 1 | Pending |
-| INFR-05 | Phase 1 | Pending |
-| INFR-06 | Phase 1 | Pending |
-| INFR-07 | Phase 1 | Pending |
-| EMAL-01 | Phase 2 | Pending |
-| EMAL-02 | Phase 2 | Pending |
-| EMAL-03 | Phase 2 | Pending |
-| EMAL-04 | Phase 2 | Pending |
-| EMAL-05 | Phase 2 | Pending |
-| EMAL-06 | Phase 2 | Pending |
-| CALR-01 | Phase 2 | Pending |
-| CALR-02 | Phase 2 | Pending |
-| CALR-03 | Phase 2 | Pending |
-| CALR-04 | Phase 2 | Pending |
-| CALR-05 | Phase 2 | Pending |
-| LNKD-01 | Phase 2 | Pending |
-| LNKD-02 | Phase 2 | Pending |
-| LNKD-03 | Phase 2 | Pending |
-| LNKD-04 | Phase 2 | Pending |
-| TELE-01 | Phase 2 | Pending |
-| TELE-02 | Phase 2 | Pending |
-| TELE-03 | Phase 2 | Pending |
-| TELE-04 | Phase 2 | Pending |
-| TELE-05 | Phase 2 | Pending |
-| TELE-06 | Phase 2 | Pending |
-| TMLN-01 | Phase 2 | Pending |
-| TMLN-02 | Phase 2 | Pending |
-| TMLN-03 | Phase 2 | Pending |
-| AGEN-01 | Phase 3 | Pending |
-| AGEN-02 | Phase 3 | Pending |
-| AGEN-03 | Phase 3 | Pending |
-| AGEN-04 | Phase 3 | Pending |
-| AGEN-05 | Phase 3 | Pending |
-| AGEN-06 | Phase 3 | Pending |
-| AGEN-07 | Phase 3 | Pending |
-| AGEN-08 | Phase 3 | Pending |
-| SEQN-01 | Phase 3 | Pending |
-| SEQN-02 | Phase 3 | Pending |
-| SEQN-03 | Phase 3 | Pending |
-| SEQN-04 | Phase 3 | Pending |
-| SEQN-05 | Phase 3 | Pending |
-| LEAD-01 | Phase 3 | Pending |
-| LEAD-02 | Phase 3 | Pending |
-| LEAD-03 | Phase 3 | Pending |
-| LEAD-04 | Phase 3 | Pending |
-| DASH-01 | Phase 4 | Pending |
-| DASH-02 | Phase 4 | Pending |
-| DASH-03 | Phase 4 | Pending |
-| APRV-01 | Phase 4 | Pending |
-| APRV-02 | Phase 4 | Pending |
-| APRV-03 | Phase 4 | Pending |
-| APRV-04 | Phase 4 | Pending |
-| CNTR-01 | Phase 4 | Pending |
-| CNTR-02 | Phase 4 | Pending |
-| CNTR-03 | Phase 4 | Pending |
-| CNTR-04 | Phase 4 | Pending |
-| CLOS-01 | Phase 4 | Pending |
-| CLOS-02 | Phase 4 | Pending |
-| INTL-01 | Phase 5 | Pending |
-| INTL-02 | Phase 5 | Pending |
-| INTL-03 | Phase 5 | Pending |
-| INTL-04 | Phase 5 | Pending |
+| INFR-01 | Phase 6 | Planned |
+| INFR-02 | Phase 6 | Planned |
+| INFR-03 | Phase 6 | Planned |
+| INFR-04 | Phase 6 | Planned |
+| AIGN-01 | Phase 8 | Planned |
+| AIGN-02 | Phase 8 | Planned |
+| AIGN-03 | Phase 8 | Planned |
+| AIGN-04 | Phase 8 | Planned |
+| AIGN-05 | Phase 8 | Planned |
+| AIGN-06 | Phase 8 | Planned |
+| AIGN-07 | Phase 8 | Planned |
+| SYNC-01 | Phase 7 | Planned |
+| SYNC-02 | Phase 7 | Planned |
+| SYNC-03 | Phase 7 | Planned |
+| SYNC-04 | Phase 7 | Planned |
+| SYNC-05 | Phase 7 | Planned |
+| ANLT-01 | Phase 11 | Planned |
+| ANLT-02 | Phase 11 | Planned |
+| ANLT-03 | Phase 11 | Planned |
+| ANLT-04 | Phase 11 | Planned |
+| UXPL-01 | Phase 6 | Planned |
+| UXPL-02 | Phase 6 | Planned |
+| UXPL-03 | Phase 6 | Planned |
+| UXPL-04 | Phase 6 | Planned |
+| UXPL-05 | Phase 6 | Planned |
+| UXPL-06 | Phase 6 | Planned |
+| ECOM-01 | Phase 7 | Planned |
+| ECOM-02 | Phase 7 | Planned |
+| ECOM-03 | Phase 7 | Planned |
+| ECOM-04 | Phase 7 | Planned |
+| ECOM-05 | Phase 7 | Planned |
+| SCOR-01 | Phase 8 | Planned |
+| SCOR-02 | Phase 8 | Planned |
+| SCOR-03 | Phase 8 | Planned |
+| SCOR-04 | Phase 8 | Planned |
+| WKFL-01 | Phase 9 | Planned |
+| WKFL-02 | Phase 9 | Planned |
+| WKFL-03 | Phase 9 | Planned |
+| WKFL-04 | Phase 9 | Planned |
+| WKFL-05 | Phase 9 | Planned |
+| COLB-01 | Phase 9 | Planned |
+| COLB-02 | Phase 9 | Planned |
+| COLB-03 | Phase 9 | Planned |
+| COLB-04 | Phase 9 | Planned |
+| COLB-05 | Phase 9 | Planned |
+| IMEX-01 | Phase 10 | Planned |
+| IMEX-02 | Phase 10 | Planned |
+| IMEX-03 | Phase 10 | Planned |
+| IMEX-04 | Phase 10 | Planned |
+| IMEX-05 | Phase 10 | Planned |
+| HOOK-01 | Phase 10 | Planned |
+| HOOK-02 | Phase 10 | Planned |
+| HOOK-03 | Phase 10 | Planned |
+| HOOK-04 | Phase 10 | Planned |
+| HOOK-05 | Phase 10 | Planned |
 
 **Coverage:**
-- v1 requirements: 65 total
-- Mapped to phases: 65
-- Unmapped: 0 ✓
+
+- v2.0 requirements: 55 total
+- Mapped to phases: 55
+- Unmapped: 0
+
+Note: The original count of "51" was incorrect. Actual requirement count across all categories is 55 (INFR:4 + AIGN:7 + SYNC:5 + ANLT:4 + UXPL:6 + ECOM:5 + SCOR:4 + WKFL:5 + COLB:5 + IMEX:5 + HOOK:5).
 
 ---
-*Requirements defined: 2026-03-10*
-*Last updated: 2026-03-10 after roadmap creation — TMLN moved to Phase 2 (with integrations), coverage count corrected to 65*
+*Requirements defined: 2026-03-11*
+*Last updated: 2026-03-11 after v2.0 roadmap creation*

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Mail,
@@ -150,7 +151,9 @@ export default function IntegrationsPage() {
     if (!integration.disconnectEndpoint) return;
     setDisconnecting(integration.key);
     try {
-      await fetch(integration.disconnectEndpoint, { method: "POST" });
+      const res = await fetch(integration.disconnectEndpoint, { method: "POST" });
+      if (!res.ok) { toast.error("Failed to disconnect"); return; }
+      toast.success(`${integration.label} disconnected`);
       setStatuses((prev) =>
         prev ? { ...prev, [integration.key]: "revoked" } : prev
       );

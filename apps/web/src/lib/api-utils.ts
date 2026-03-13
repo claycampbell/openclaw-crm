@@ -1,15 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
-import { workspaceMembers, apiKeys } from "@/db/schema";
+import { workspaceMembers, workspaces, apiKeys } from "@/db/schema";
 import { eq, and, isNull } from "drizzle-orm";
 import { createHash } from "crypto";
+import type { WorkspaceType } from "@openclaw-crm/shared";
+import { getDescendantWorkspaceIds } from "@/services/workspace";
 
 export interface AuthContext {
   userId: string;
   workspaceId: string;
   workspaceRole: "admin" | "member";
+  workspaceType: WorkspaceType;
+  parentWorkspaceId: string | null;
+  childWorkspaceIds: string[];
   authMethod?: "cookie" | "api_key";
+}
+
+/**
+ * Resolve the set of workspace IDs that the current auth context should query.
+ * - For a company with BUs: returns [companyId, ...buIds] (roll-up view)
+ * - For a business_unit: returns [buId] only
+ * - For an agency: returns [agencyId, ...all descendant IDs]
+ * - For a standalone company (no children): returns [companyId]
+ */
+export function resolveWorkspaceScope(ctx: AuthContext): string[] {
+  return [ctx.workspaceId, ...ctx.childWorkspaceIds];
 }
 
 function hashApiKey(key: string): string {
@@ -68,12 +84,7 @@ export async function getAuthContext(req: NextRequest): Promise<AuthContext | nu
       .limit(1);
 
     if (membership.length > 0) {
-      return {
-        userId,
-        workspaceId: membership[0].workspaceId,
-        workspaceRole: membership[0].role,
-        authMethod: "cookie",
-      };
+      return buildAuthContext(userId, membership[0].workspaceId, membership[0].role, "cookie");
     }
   }
 
@@ -88,12 +99,7 @@ export async function getAuthContext(req: NextRequest): Promise<AuthContext | nu
     .limit(1);
 
   if (memberships.length > 0) {
-    return {
-      userId,
-      workspaceId: memberships[0].workspaceId,
-      workspaceRole: memberships[0].role,
-      authMethod: "cookie",
-    };
+    return buildAuthContext(userId, memberships[0].workspaceId, memberships[0].role, "cookie");
   }
 
   // 5. No workspace membership — return null (user needs to create/join a workspace)
@@ -146,11 +152,46 @@ async function getApiKeyAuthContext(token: string): Promise<AuthContext | null> 
 
   const role = memberships.length > 0 ? memberships[0].role : "member";
 
+  return buildAuthContext(key.userId, key.workspaceId, role, "api_key");
+}
+
+/**
+ * Build a full AuthContext with hierarchy info for a given workspace.
+ * Fetches workspace type, parent, and child IDs in one pass.
+ */
+async function buildAuthContext(
+  userId: string,
+  workspaceId: string,
+  role: "admin" | "member",
+  authMethod: "cookie" | "api_key"
+): Promise<AuthContext> {
+  // Fetch workspace type and parent
+  const [ws] = await db
+    .select({
+      type: workspaces.type,
+      parentWorkspaceId: workspaces.parentWorkspaceId,
+    })
+    .from(workspaces)
+    .where(eq(workspaces.id, workspaceId))
+    .limit(1);
+
+  const workspaceType = (ws?.type ?? "company") as WorkspaceType;
+  const parentWorkspaceId = ws?.parentWorkspaceId ?? null;
+
+  // Get child workspace IDs (for company/agency roll-up)
+  let childWorkspaceIds: string[] = [];
+  if (workspaceType === "company" || workspaceType === "agency") {
+    childWorkspaceIds = await getDescendantWorkspaceIds(workspaceId);
+  }
+
   return {
-    userId: key.userId,
-    workspaceId: key.workspaceId,
+    userId,
+    workspaceId,
     workspaceRole: role,
-    authMethod: "api_key",
+    workspaceType,
+    parentWorkspaceId,
+    childWorkspaceIds,
+    authMethod,
   };
 }
 

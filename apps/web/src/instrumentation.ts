@@ -10,27 +10,78 @@ export async function register() {
       await evaluateSignalById(signalEventId);
     });
 
-    // ai_generate: placeholder until Phase 3 document generators are built
-    // Creates a placeholder draft in non-production for inbox testing
+    // ai_generate: dispatches to the appropriate document generator
     registerJobHandler("ai_generate", async (payload) => {
-      const { workspaceId, recordId, documentType } = payload as {
+      const { workspaceId, recordId, documentType, contextTier, competitorName } = payload as {
         workspaceId: string;
         recordId?: string;
         documentType?: string;
+        contextTier?: string;
+        competitorName?: string;
       };
-      if (process.env.NODE_ENV !== "production") {
-        const generatedAssetsService = await import("@/services/generated-assets");
-        await generatedAssetsService.createDraft({
-          workspaceId,
-          recordId,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          assetType: ((documentType ?? "opportunity_brief") as any),
-          content: `[Placeholder draft — ai_generate job received for ${documentType ?? "unknown"} on record ${recordId ?? "none"}]`,
-          modelUsed: "placeholder",
-          promptVersion: "v0",
-        });
-      } else {
-        console.log("[job:ai_generate] Pending full implementation in Phase 3:", payload);
+
+      if (!workspaceId || !recordId) {
+        console.warn("[job:ai_generate] Missing workspaceId or recordId, skipping");
+        return;
+      }
+
+      try {
+        switch (documentType) {
+          case "opportunity_brief": {
+            const { generateOpportunityBrief } = await import("@/services/documents/brief");
+            await generateOpportunityBrief(workspaceId, recordId);
+            break;
+          }
+          case "proposal": {
+            const { generateProposal } = await import("@/services/documents/proposal");
+            await generateProposal(workspaceId, recordId);
+            break;
+          }
+          case "followup": {
+            const { generatePostMeetingFollowup } = await import("@/services/documents/followup");
+            const triggerType = (payload as Record<string, unknown>).triggerType as string | undefined;
+            const noteText = (payload as Record<string, unknown>).noteText as string | undefined;
+            await generatePostMeetingFollowup(workspaceId, recordId, {
+              type: (triggerType ?? "meeting_ended") as "meeting_ended" | "note_added",
+              noteText,
+            });
+            break;
+          }
+          case "meeting_prep": {
+            const { generateMeetingPrepBrief } = await import("@/services/documents/followup");
+            const meetingId = (payload as Record<string, unknown>).meetingId as string ?? "";
+            await generateMeetingPrepBrief(workspaceId, recordId, meetingId);
+            break;
+          }
+          case "battlecard": {
+            const { generateBattlecard } = await import("@/services/documents/battlecard");
+            await generateBattlecard(workspaceId, recordId, competitorName ?? "Unknown");
+            break;
+          }
+          case "deck": {
+            // Deck generation reuses proposal with different framing
+            const { generateProposal } = await import("@/services/documents/proposal");
+            await generateProposal(workspaceId, recordId);
+            break;
+          }
+          default: {
+            console.warn(`[job:ai_generate] Unknown document type: ${documentType}`);
+            // Create a placeholder draft for unknown types
+            const generatedAssetsService = await import("@/services/generated-assets");
+            await generatedAssetsService.createDraft({
+              workspaceId,
+              recordId,
+              assetType: ((documentType ?? "opportunity_brief") as any),
+              content: `[Placeholder — no generator for type "${documentType}"]`,
+              modelUsed: "placeholder",
+              promptVersion: "v0",
+            });
+          }
+        }
+        console.log(`[job:ai_generate] Completed ${documentType} for record ${recordId}`);
+      } catch (err) {
+        console.error(`[job:ai_generate] Failed ${documentType} for record ${recordId}:`, err);
+        throw err; // Re-throw for retry
       }
     });
   }
